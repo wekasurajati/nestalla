@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import '../../core/theme/app_colors.dart';
 import '../../widgets/app_logo.dart';
+import 'widgets/social_login_row.dart';
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -90,19 +91,7 @@ class _LoginPageState extends State<LoginPage> {
                     const SizedBox(height: 8),
                     ElevatedButton(onPressed: _submit, child: const Text('Login')),
                     const SizedBox(height: 24),
-                    const Text('Or continue with',
-                        textAlign: TextAlign.center,
-                        style: TextStyle(fontSize: 12)),
-                    const SizedBox(height: 12),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        IconButton(
-                            onPressed: () {}, icon: const Icon(Icons.g_mobiledata, size: 36)),
-                        IconButton(
-                            onPressed: () {}, icon: const Icon(Icons.facebook, size: 30)),
-                      ],
-                    ),
+                    const SocialLoginRow(),
                     Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
