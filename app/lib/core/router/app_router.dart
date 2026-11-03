@@ -5,7 +5,7 @@ import '../../features/auth/login_page.dart';
 
 // Pemilik page: ganti PlaceholderPage dengan page asli kalian.
 final appRouter = GoRouter(
-  initialLocation: '/login',
+  initialLocation: '/home',
   routes: [
     // --- Orang A: auth ---
     GoRoute(path: '/login', builder: (_, _) => const LoginPage()),
