@@ -3,6 +3,7 @@ import '../../widgets/main_shell.dart';
 import '../../widgets/placeholder_page.dart';
 import '../../features/auth/login_page.dart';
 import '../../features/auth/register_page.dart';
+import '../../features/profile/my_account_page.dart';
 
 // Pemilik page: ganti PlaceholderPage dengan page asli kalian.
 final appRouter = GoRouter(
@@ -27,7 +28,7 @@ final appRouter = GoRouter(
           GoRoute(path: '/wishlist', builder: (_, _) => const PlaceholderPage('My Wishlist')), // C
         ]),
         StatefulShellBranch(routes: [
-          GoRoute(path: '/profile', builder: (_, _) => const PlaceholderPage('My Account')), // A
+          GoRoute(path: '/profile', builder: (_, _) => const MyAccountPage()), // A // A
         ]),
       ],
     ),
