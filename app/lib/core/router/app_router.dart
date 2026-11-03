@@ -1,18 +1,20 @@
 import 'package:go_router/go_router.dart';
 import '../../widgets/main_shell.dart';
 import '../../widgets/placeholder_page.dart';
+import '../../features/auth/login_page.dart';
 
 // Pemilik page: ganti PlaceholderPage dengan page asli kalian.
 final appRouter = GoRouter(
-  initialLocation: '/home',
+  initialLocation: '/login',
   routes: [
     // --- Orang A: auth ---
-    GoRoute(path: '/login', builder: (_, _) => const PlaceholderPage('Login')),
+    GoRoute(path: '/login', builder: (_, _) => const LoginPage()),
     GoRoute(path: '/register', builder: (_, _) => const PlaceholderPage('Registration')),
+    GoRoute(path: '/forgot-password', builder: (_, _) => const PlaceholderPage('Forgot Password')),
 
     // --- Halaman dengan bottom navbar ---
     StatefulShellRoute.indexedStack(
-      builder: (_, __, shell) => MainShell(shell: shell),
+      builder: (_, _, shell) => MainShell(shell: shell),
       branches: [
         StatefulShellBranch(routes: [
           GoRoute(path: '/home', builder: (_, _) => const PlaceholderPage('Home')), // B
