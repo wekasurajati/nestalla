@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import '../../core/theme/app_colors.dart';
+import '../../widgets/app_logo.dart';
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -44,18 +45,10 @@ class _LoginPageState extends State<LoginPage> {
                   mainAxisSize: MainAxisSize.min,
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    const Text(
-                      'Nestalla',
-                      textAlign: TextAlign.center,
-                      style: TextStyle(
-                        fontSize: 36,
-                        fontWeight: FontWeight.w800,
-                        color: AppColors.navy,
-                      ),
-                    ),
+                    const Center(child: AppLogo()),
                     const SizedBox(height: 8),
                     const Text(
-                      'Silakan mengisi username dan password',
+                      'Please enter your username and password',
                       textAlign: TextAlign.center,
                       style: TextStyle(fontSize: 12, color: AppColors.dark),
                     ),
@@ -65,7 +58,7 @@ class _LoginPageState extends State<LoginPage> {
                     TextFormField(
                       controller: _usernameCtrl,
                       validator: (v) => (v == null || v.trim().isEmpty)
-                          ? 'Username wajib diisi'
+                          ? 'Username is required'
                           : null,
                     ),
                     const SizedBox(height: 16),
@@ -75,7 +68,7 @@ class _LoginPageState extends State<LoginPage> {
                       controller: _passwordCtrl,
                       obscureText: _hidePassword,
                       validator: (v) => (v == null || v.length < 6)
-                          ? 'Password minimal 6 karakter'
+                          ? 'Password must be at least 6 characters'
                           : null,
                       decoration: InputDecoration(
                         suffixIcon: IconButton(
