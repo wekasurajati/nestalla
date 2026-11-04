@@ -6,6 +6,7 @@ import 'core/router/app_router.dart';
 import 'core/theme/app_theme.dart';
 import 'providers/wishlist_provider.dart';
 import 'repositories/book_repository.dart';
+import 'features/checkout/checkout_repository.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -16,6 +17,9 @@ Future<void> main() async {
       providers: [
         Provider<BookRepository>(create: (_) => DummyBookRepository()),
         ChangeNotifierProvider(create: (_) => WishlistProvider(prefs)),
+        Provider<CheckoutRepository>(
+          create: (ctx) => DummyCheckoutRepository(ctx.read<BookRepository>()),
+        ),
         // Tiap orang boleh menambah provider miliknya di sini lewat PR kecil.
       ],
       child: const NestallaApp(),
