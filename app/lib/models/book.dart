@@ -1,7 +1,10 @@
+import 'book_review.dart';
+
 class Book {
   final int id;
   final String title;
   final String author;
+  final String publisher;
   final String description;
   final int price;
   final int? oldPrice;
@@ -11,11 +14,15 @@ class Book {
   final double rating;
   final bool isFeatured;
   final bool isDiscount;
+  final int? publishedYear;
+  final String? ageRating;
+  final List<BookReview> reviews;
 
   const Book({
     required this.id,
     required this.title,
     required this.author,
+    this.publisher = '',
     required this.description,
     required this.price,
     this.oldPrice,
@@ -25,5 +32,8 @@ class Book {
     this.rating = 4.5,
     this.isFeatured = false,
     this.isDiscount = false,
+    this.publishedYear,
+    this.ageRating,
+    this.reviews = const [],
   });
 }

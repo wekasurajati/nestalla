@@ -1,14 +1,21 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+
 import 'core/router/app_router.dart';
 import 'core/theme/app_theme.dart';
+import 'providers/wishlist_provider.dart';
 import 'repositories/book_repository.dart';
 
-void main() {
+Future<void> main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  final prefs = await SharedPreferences.getInstance();
+
   runApp(
     MultiProvider(
       providers: [
         Provider<BookRepository>(create: (_) => DummyBookRepository()),
+        ChangeNotifierProvider(create: (_) => WishlistProvider(prefs)),
         // Tiap orang boleh menambah provider miliknya di sini lewat PR kecil.
       ],
       child: const NestallaApp(),

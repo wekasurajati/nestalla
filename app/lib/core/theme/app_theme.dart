@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+
 import 'app_colors.dart';
+import 'app_radius.dart';
 
 class AppTheme {
   static ThemeData get light => ThemeData(
@@ -21,18 +23,28 @@ class AppTheme {
         backgroundColor: AppColors.deepBlue,
         foregroundColor: Colors.white,
         minimumSize: const Size.fromHeight(48),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(8),
-        ),
+        shape: AppRadius.shape,
       ),
+    ),
+    outlinedButtonTheme: OutlinedButtonThemeData(
+      style: OutlinedButton.styleFrom(shape: AppRadius.shape),
+    ),
+    textButtonTheme: TextButtonThemeData(
+      style: TextButton.styleFrom(shape: AppRadius.shape),
+    ),
+    iconButtonTheme: IconButtonThemeData(
+      style: IconButton.styleFrom(shape: AppRadius.shape),
     ),
     inputDecorationTheme: InputDecorationTheme(
       filled: true,
       fillColor: AppColors.grey,
       border: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: AppRadius.border,
         borderSide: BorderSide.none,
       ),
     ),
+    chipTheme: ChipThemeData(shape: AppRadius.shape),
+    navigationBarTheme: NavigationBarThemeData(indicatorShape: AppRadius.shape),
+    snackBarTheme: SnackBarThemeData(shape: AppRadius.shape),
   );
 }

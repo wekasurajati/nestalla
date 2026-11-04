@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+
 import '../../core/theme/app_colors.dart';
+import '../../core/theme/app_radius.dart';
 
 class MyAccountPage extends StatefulWidget {
   const MyAccountPage({super.key});
@@ -95,7 +97,7 @@ class _MyAccountPageState extends State<MyAccountPage> {
     padding: const EdgeInsets.all(16),
     decoration: BoxDecoration(
       color: Colors.white,
-      borderRadius: BorderRadius.circular(12),
+      borderRadius: AppRadius.border,
       border: Border.all(color: AppColors.grey),
     ),
     child: child,
@@ -105,8 +107,10 @@ class _MyAccountPageState extends State<MyAccountPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('My Account',
-            style: TextStyle(fontWeight: FontWeight.w700)),
+        title: const Text(
+          'My Account',
+          style: TextStyle(fontWeight: FontWeight.w700),
+        ),
       ),
       body: SafeArea(
         child: Center(
@@ -122,15 +126,22 @@ class _MyAccountPageState extends State<MyAccountPage> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
-                        const Icon(Icons.account_circle_outlined,
-                            size: 64, color: AppColors.dark),
+                        const Icon(
+                          Icons.account_circle_outlined,
+                          size: 64,
+                          color: AppColors.dark,
+                        ),
                         const SizedBox(height: 4),
-                        const Text('Username',
-                            textAlign: TextAlign.center,
-                            style: TextStyle(fontWeight: FontWeight.w700)),
-                        const Text('amartoga@gmail.com',
-                            textAlign: TextAlign.center,
-                            style: TextStyle(fontSize: 11, color: Colors.grey)),
+                        const Text(
+                          'Username',
+                          textAlign: TextAlign.center,
+                          style: TextStyle(fontWeight: FontWeight.w700),
+                        ),
+                        const Text(
+                          'amartoga@gmail.com',
+                          textAlign: TextAlign.center,
+                          style: TextStyle(fontSize: 11, color: Colors.grey),
+                        ),
                         const SizedBox(height: 16),
                         Row(
                           crossAxisAlignment: CrossAxisAlignment.start,
@@ -143,7 +154,7 @@ class _MyAccountPageState extends State<MyAccountPage> {
                                   TextFormField(
                                     controller: _firstNameCtrl,
                                     validator: (v) =>
-                                    (v == null || v.trim().isEmpty)
+                                        (v == null || v.trim().isEmpty)
                                         ? 'First name is required'
                                         : null,
                                   ),
@@ -179,8 +190,8 @@ class _MyAccountPageState extends State<MyAccountPage> {
                                         return 'Email is required';
                                       }
                                       final ok = RegExp(
-                                          r'^[^@\s]+@[^@\s]+\.[^@\s]+$')
-                                          .hasMatch(v.trim());
+                                        r'^[^@\s]+@[^@\s]+\.[^@\s]+$',
+                                      ).hasMatch(v.trim());
                                       return ok ? null : 'Invalid email';
                                     },
                                   ),
@@ -204,10 +215,7 @@ class _MyAccountPageState extends State<MyAccountPage> {
                         ),
                         const SizedBox(height: 12),
                         _label('Address'),
-                        TextFormField(
-                          controller: _addressCtrl,
-                          maxLines: 3,
-                        ),
+                        TextFormField(controller: _addressCtrl, maxLines: 3),
                         const SizedBox(height: 16),
                         ElevatedButton(
                           onPressed: _saveProfile,
@@ -226,9 +234,13 @@ class _MyAccountPageState extends State<MyAccountPage> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
-                        const Text('Change Password',
-                            style: TextStyle(
-                                fontSize: 16, fontWeight: FontWeight.w700)),
+                        const Text(
+                          'Change Password',
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
                         const SizedBox(height: 12),
                         _label('Password'),
                         _passwordField(
@@ -281,8 +293,7 @@ class _MyAccountPageState extends State<MyAccountPage> {
                     minimumSize: const Size.fromHeight(48),
                     foregroundColor: Colors.red,
                     side: const BorderSide(color: Colors.red),
-                    shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(8)),
+                    shape: AppRadius.shape,
                   ),
                 ),
                 const SizedBox(height: 16),
