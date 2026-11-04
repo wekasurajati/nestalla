@@ -8,6 +8,7 @@ import '../../features/book_detail/book_detail_page.dart';
 import '../../features/profile/my_account_page.dart';
 import '../../features/wishlist/wishlist_page.dart';
 import '../../features/auth/forgot_password_page.dart';
+import '../../features/orders/my_order_page.dart';
 
 // Pemilik page: ganti PlaceholderPage dengan page asli kalian.
 final appRouter = GoRouter(
@@ -37,7 +38,7 @@ final appRouter = GoRouter(
           routes: [
             GoRoute(
               path: '/orders',
-              builder: (_, _) => const PlaceholderPage('My Order'),
+              builder: (_, _) => const MyOrderPage(),
             ), // D
           ],
         ),
