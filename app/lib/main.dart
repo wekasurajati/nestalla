@@ -4,6 +4,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import 'core/router/app_router.dart';
 import 'core/theme/app_theme.dart';
+import 'providers/cart_provider.dart';
 import 'providers/notification_provider.dart';
 import 'providers/wishlist_provider.dart';
 import 'repositories/book_repository.dart';
@@ -17,6 +18,7 @@ Future<void> main() async {
       providers: [
         Provider<BookRepository>(create: (_) => DummyBookRepository()),
         ChangeNotifierProvider(create: (_) => WishlistProvider(prefs)),
+        ChangeNotifierProvider(create: (_) => CartProvider(prefs)),
         ChangeNotifierProvider(create: (_) => NotificationProvider(prefs)),
         // Tiap orang boleh menambah provider miliknya di sini lewat PR kecil.
       ],

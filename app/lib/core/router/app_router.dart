@@ -5,6 +5,7 @@ import '../../widgets/placeholder_page.dart';
 import '../../features/auth/login_page.dart';
 import '../../features/auth/register_page.dart';
 import '../../features/book_detail/book_detail_page.dart';
+import '../../features/cart/cart_page.dart';
 import '../../features/home/home_page.dart';
 import '../../features/notification/notification_page.dart';
 import '../../features/profile/my_account_page.dart';
@@ -74,7 +75,7 @@ final appRouter = GoRouter(
     ),
     GoRoute(
       path: '/cart',
-      builder: (_, _) => const PlaceholderPage('Cart'),
+      builder: (_, _) => const CartPage(),
     ), // C
     GoRoute(
       path: '/checkout',

@@ -3,6 +3,7 @@ import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
 import '../core/theme/app_colors.dart';
+import '../providers/cart_provider.dart';
 import '../providers/notification_provider.dart';
 
 class HeaderActionButtons extends StatelessWidget {
@@ -11,6 +12,7 @@ class HeaderActionButtons extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final unreadCount = context.watch<NotificationProvider>().unreadCount;
+    final cartItemCount = context.watch<CartProvider>().items.length;
     final currentPath = GoRouterState.of(context).uri.path;
 
     return Row(
@@ -18,6 +20,7 @@ class HeaderActionButtons extends StatelessWidget {
       children: [
         _CircleActionButton(
           icon: Icons.shopping_cart_outlined,
+          badgeCount: cartItemCount,
           onTap: () => context.push('/cart'),
         ),
         const SizedBox(width: 8),

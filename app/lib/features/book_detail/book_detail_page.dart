@@ -6,8 +6,10 @@ import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_radius.dart';
 import '../../core/utils/currency.dart';
 import '../../models/book.dart';
+import '../../providers/cart_provider.dart';
 import '../../providers/wishlist_provider.dart';
 import '../../repositories/book_repository.dart';
+import '../../widgets/back_button.dart';
 import '../../widgets/book_cover.dart';
 import '../../widgets/rating_label.dart';
 import 'widgets/review_card.dart';
@@ -71,10 +73,25 @@ class _BookDetailPageState extends State<BookDetailPage> {
   }
 
   void _addToCart(Book book) {
-    // TODO: sambungkan ke CartRepository saat tersedia.
+    final cart = context.read<CartProvider>();
+    if (cart.contains(book.id)) {
+      final currentQty = cart.quantityOf(book.id);
+      final newQty = (currentQty + 1).clamp(1, book.stock);
+      cart.setQuantity(book.id, newQty);
+    } else {
+      cart.add(book.id);
+    }
     ScaffoldMessenger.of(context)
       ..hideCurrentSnackBar()
-      ..showSnackBar(SnackBar(content: Text('${book.title} added to cart')));
+      ..showSnackBar(
+        SnackBar(
+          content: const Text('Ditambahkan ke keranjang'),
+          action: SnackBarAction(
+            label: 'Lihat',
+            onPressed: () => context.push('/cart'),
+          ),
+        ),
+      );
   }
 
   @override
@@ -223,7 +240,7 @@ class _BookDetailContent extends StatelessWidget {
             ),
           ),
         ),
-        Positioned(top: 8, left: 16, child: _BackButton(onPressed: onBack)),
+        Positioned(top: 8, left: 16, child: AppBackButton(onPressed: onBack)),
       ],
     );
   }
@@ -360,29 +377,6 @@ class _SectionTitle extends StatelessWidget {
   }
 }
 
-class _BackButton extends StatelessWidget {
-  final VoidCallback onPressed;
-
-  const _BackButton({required this.onPressed});
-
-  @override
-  Widget build(BuildContext context) {
-    return Material(
-      color: AppColors.backCircle,
-      shape: AppRadius.shape,
-      child: InkWell(
-        customBorder: AppRadius.shape,
-        onTap: onPressed,
-        child: const SizedBox(
-          width: 40,
-          height: 40,
-          child: Icon(Icons.arrow_back, size: 20, color: AppColors.background),
-        ),
-      ),
-    );
-  }
-}
-
 class _MessageState extends StatelessWidget {
   final String title;
   final String message;
@@ -431,7 +425,7 @@ class _MessageState extends StatelessWidget {
             ),
           ),
         ),
-        Positioned(top: 8, left: 16, child: _BackButton(onPressed: onBack)),
+        Positioned(top: 8, left: 16, child: AppBackButton(onPressed: onBack)),
       ],
     );
   }
