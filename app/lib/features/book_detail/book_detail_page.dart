@@ -198,7 +198,7 @@ class _BookDetailContent extends StatelessWidget {
                   const SizedBox(height: 24),
                   const Divider(height: 1, color: AppColors.grey),
                   const SizedBox(height: 16),
-                  const _SectionTitle('Product review'),
+                  const _SectionTitle('Ulasan Pelanggan'),
                   const SizedBox(height: 12),
                   if (book.reviews.isEmpty)
                     const Text(
@@ -337,7 +337,7 @@ class _AddToCartButton extends StatelessWidget {
         shape: AppRadius.shape,
         textStyle: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
       ),
-      child: const Text('Add to cart'),
+      child: const Text('Tambah ke keranjang'),
     );
   }
 }

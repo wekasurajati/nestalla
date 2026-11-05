@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
-import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
 import '../../core/theme/app_colors.dart';
 import '../../models/book.dart';
 import '../../providers/wishlist_provider.dart';
 import '../../repositories/book_repository.dart';
+import 'widgets/empty_wishlist_view.dart';
 import 'widgets/wishlist_card.dart';
 import 'widgets/wishlist_list_tile.dart';
 import 'widgets/wishlist_view_toggle.dart';
@@ -34,7 +34,7 @@ class _WishlistPageState extends State<WishlistPage> {
     return Scaffold(
       appBar: AppBar(
         title: const Text(
-          'Wishlist',
+          'Favorit Saya',
           style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
         ),
       ),
@@ -58,12 +58,11 @@ class _WishlistPageState extends State<WishlistPage> {
               .toList();
 
           if (wishlistBooks.isEmpty) {
-            return const _MessageState(
-              icon: Icons.favorite_border,
-              title: 'Wishlist kamu masih kosong',
-              message: 'Tekan ikon hati di halaman buku untuk menyimpannya.',
-              showBrowseButton: true,
-            );
+            final featuredBooks = allBooks
+                .where((book) => book.isFeatured)
+                .take(6)
+                .toList();
+            return EmptyWishlistView(popularPicks: featuredBooks);
           }
 
           final categories =
@@ -232,13 +231,11 @@ class _MessageState extends StatelessWidget {
   final IconData icon;
   final String title;
   final String message;
-  final bool showBrowseButton;
 
   const _MessageState({
     required this.icon,
     required this.title,
     required this.message,
-    this.showBrowseButton = false,
   });
 
   @override
@@ -266,13 +263,6 @@ class _MessageState extends StatelessWidget {
               textAlign: TextAlign.center,
               style: const TextStyle(fontSize: 13, color: AppColors.dark),
             ),
-            if (showBrowseButton) ...[
-              const SizedBox(height: 20),
-              ElevatedButton(
-                onPressed: () => context.go('/home'),
-                child: const Text('Jelajahi buku'),
-              ),
-            ],
           ],
         ),
       ),
