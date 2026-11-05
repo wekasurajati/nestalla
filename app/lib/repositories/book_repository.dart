@@ -94,6 +94,7 @@ class DummyBookRepository implements BookRepository {
       oldPrice: 140000,
       image: 'assets/images/books/book_3.jpg',
       category: 'Fiction',
+      isFeatured: true,
       isDiscount: true,
       rating: 4.7,
       publishedYear: 2017,

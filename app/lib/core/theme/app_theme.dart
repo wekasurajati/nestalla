@@ -20,7 +20,7 @@ class AppTheme {
     ),
     elevatedButtonTheme: ElevatedButtonThemeData(
       style: ElevatedButton.styleFrom(
-        backgroundColor: AppColors.deepBlue,
+        backgroundColor: const Color.fromARGB(255, 26, 30, 158),
         foregroundColor: Colors.white,
         minimumSize: const Size.fromHeight(48),
         shape: AppRadius.shape,
@@ -44,7 +44,6 @@ class AppTheme {
       ),
     ),
     chipTheme: ChipThemeData(shape: AppRadius.shape),
-    navigationBarTheme: NavigationBarThemeData(indicatorShape: AppRadius.shape),
     snackBarTheme: SnackBarThemeData(shape: AppRadius.shape),
   );
 }
