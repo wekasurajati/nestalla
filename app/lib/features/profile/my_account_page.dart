@@ -50,7 +50,7 @@ class _MyAccountPageState extends State<MyAccountPage> {
   void _saveProfile() {
     if (_profileKey.currentState!.validate()) {
       // TODO minggu 2: PUT /profile
-      _showMessage('Profile updated');
+      _showMessage('Profil berhasil diperbarui');
     }
   }
 
@@ -60,7 +60,7 @@ class _MyAccountPageState extends State<MyAccountPage> {
       _currentPassCtrl.clear();
       _newPassCtrl.clear();
       _confirmPassCtrl.clear();
-      _showMessage('Password updated');
+      _showMessage('Kata sandi berhasil diperbarui');
     }
   }
 
@@ -108,7 +108,7 @@ class _MyAccountPageState extends State<MyAccountPage> {
     return Scaffold(
       appBar: AppBar(
         title: const Text(
-          'My Account',
+          'Akun Saya',
           style: TextStyle(fontWeight: FontWeight.w700),
         ),
       ),
@@ -150,12 +150,12 @@ class _MyAccountPageState extends State<MyAccountPage> {
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  _label('First name'),
+                                  _label('Nama depan'),
                                   TextFormField(
                                     controller: _firstNameCtrl,
                                     validator: (v) =>
                                         (v == null || v.trim().isEmpty)
-                                        ? 'First name is required'
+                                        ? 'Nama depan wajib diisi'
                                         : null,
                                   ),
                                 ],
@@ -166,7 +166,7 @@ class _MyAccountPageState extends State<MyAccountPage> {
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  _label('Last name'),
+                                  _label('Nama belakang'),
                                   TextFormField(controller: _lastNameCtrl),
                                 ],
                               ),
@@ -187,12 +187,12 @@ class _MyAccountPageState extends State<MyAccountPage> {
                                     keyboardType: TextInputType.emailAddress,
                                     validator: (v) {
                                       if (v == null || v.trim().isEmpty) {
-                                        return 'Email is required';
+                                        return 'Email wajib diisi';
                                       }
                                       final ok = RegExp(
                                         r'^[^@\s]+@[^@\s]+\.[^@\s]+$',
                                       ).hasMatch(v.trim());
-                                      return ok ? null : 'Invalid email';
+                                      return ok ? null : 'Email tidak valid';
                                     },
                                   ),
                                 ],
@@ -203,7 +203,7 @@ class _MyAccountPageState extends State<MyAccountPage> {
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  _label('Phone number'),
+                                  _label('Nomor telepon'),
                                   TextFormField(
                                     controller: _phoneCtrl,
                                     keyboardType: TextInputType.phone,
@@ -214,12 +214,12 @@ class _MyAccountPageState extends State<MyAccountPage> {
                           ],
                         ),
                         const SizedBox(height: 12),
-                        _label('Address'),
+                        _label('Alamat'),
                         TextFormField(controller: _addressCtrl, maxLines: 3),
                         const SizedBox(height: 16),
                         ElevatedButton(
                           onPressed: _saveProfile,
-                          child: const Text('Save changes'),
+                          child: const Text('Simpan perubahan'),
                         ),
                       ],
                     ),
@@ -235,42 +235,42 @@ class _MyAccountPageState extends State<MyAccountPage> {
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
                         const Text(
-                          'Change Password',
+                          'Ubah Kata Sandi',
                           style: TextStyle(
                             fontSize: 16,
                             fontWeight: FontWeight.w700,
                           ),
                         ),
                         const SizedBox(height: 12),
-                        _label('Password'),
+                        _label('Kata sandi saat ini'),
                         _passwordField(
                           controller: _currentPassCtrl,
                           hidden: _hideCurrent,
                           onToggle: () =>
                               setState(() => _hideCurrent = !_hideCurrent),
                           validator: (v) => (v == null || v.isEmpty)
-                              ? 'Current password is required'
+                              ? 'Kata sandi saat ini wajib diisi'
                               : null,
                         ),
                         const SizedBox(height: 12),
-                        _label('New Password'),
+                        _label('Kata sandi baru'),
                         _passwordField(
                           controller: _newPassCtrl,
                           hidden: _hideNew,
                           onToggle: () => setState(() => _hideNew = !_hideNew),
                           validator: (v) => (v == null || v.length < 6)
-                              ? 'Password must be at least 6 characters'
+                              ? 'Kata sandi minimal 6 karakter'
                               : null,
                         ),
                         const SizedBox(height: 12),
-                        _label('Confirm new password'),
+                        _label('Konfirmasi kata sandi baru'),
                         _passwordField(
                           controller: _confirmPassCtrl,
                           hidden: _hideConfirm,
                           onToggle: () =>
                               setState(() => _hideConfirm = !_hideConfirm),
                           validator: (v) => v != _newPassCtrl.text
-                              ? 'Passwords do not match'
+                              ? 'Kata sandi tidak cocok'
                               : null,
                         ),
                         const SizedBox(height: 16),
@@ -288,7 +288,7 @@ class _MyAccountPageState extends State<MyAccountPage> {
                 OutlinedButton.icon(
                   onPressed: _logout,
                   icon: const Icon(Icons.logout),
-                  label: const Text('Logout'),
+                  label: const Text('Keluar'),
                   style: OutlinedButton.styleFrom(
                     minimumSize: const Size.fromHeight(48),
                     foregroundColor: Colors.red,
