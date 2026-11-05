@@ -11,6 +11,8 @@ import '../../features/profile/my_account_page.dart';
 import '../../features/search/search_page.dart';
 import '../../features/wishlist/wishlist_page.dart';
 import '../../features/auth/forgot_password_page.dart';
+import '../../features/orders/my_order_page.dart';
+import '../../features/checkout/checkout_page.dart';
 
 // Pemilik page: ganti PlaceholderPage dengan page asli kalian.
 final appRouter = GoRouter(
@@ -37,7 +39,7 @@ final appRouter = GoRouter(
           routes: [
             GoRoute(
               path: '/orders',
-              builder: (_, _) => const PlaceholderPage('My Order'),
+              builder: (_, _) => const MyOrderPage(),
             ), // D
           ],
         ),
@@ -78,7 +80,7 @@ final appRouter = GoRouter(
     ), // C
     GoRoute(
       path: '/checkout',
-      builder: (_, _) => const PlaceholderPage('Checkout'),
+      builder: (_, _) => const CheckoutPage(),
     ), // D
     GoRoute(
       path: '/orders/:id',
