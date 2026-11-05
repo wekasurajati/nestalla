@@ -61,7 +61,7 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
           const Center(child: AppLogo()),
           const SizedBox(height: 16),
           const Text(
-            'Forgot Password',
+            'Lupa Kata Sandi',
             textAlign: TextAlign.center,
             style: TextStyle(
                 fontSize: 22,
@@ -70,7 +70,7 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
           ),
           const SizedBox(height: 8),
           const Text(
-            'Enter your email and we will send you a link to reset your password',
+            'Masukkan email Anda dan kami akan mengirim tautan untuk mengatur ulang kata sandi',
             textAlign: TextAlign.center,
             style: TextStyle(fontSize: 12, color: AppColors.dark),
           ),
@@ -81,14 +81,14 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
             controller: _emailCtrl,
             keyboardType: TextInputType.emailAddress,
             validator: (v) {
-              if (v == null || v.trim().isEmpty) return 'Email is required';
+              if (v == null || v.trim().isEmpty) return 'Email waib di isi';
               final ok = RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$').hasMatch(v.trim());
-              return ok ? null : 'Enter a valid email address';
+              return ok ? null : 'Masukkan alamat email yang valid';
             },
           ),
           const SizedBox(height: 24),
           ElevatedButton(
-              onPressed: _submit, child: const Text('Send reset link')),
+              onPressed: _submit, child: const Text('Kirim tautan reset')),
         ],
       ),
     );
@@ -103,20 +103,20 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
             size: 72, color: AppColors.navy),
         const SizedBox(height: 16),
         const Text(
-          'Check your email',
+          'Periksa email anda',
           textAlign: TextAlign.center,
           style: TextStyle(fontSize: 22, fontWeight: FontWeight.w700),
         ),
         const SizedBox(height: 8),
         Text(
-          'We sent a reset link to ${_emailCtrl.text.trim()}',
+          'Kami mengirim tautan reset ke ${_emailCtrl.text.trim()}',
           textAlign: TextAlign.center,
           style: const TextStyle(fontSize: 13, color: AppColors.dark),
         ),
         const SizedBox(height: 24),
         ElevatedButton(
             onPressed: () => context.go('/login'),
-            child: const Text('Back to Login')),
+            child: const Text('Kembali ke Halaman Masuk')),
       ],
     );
   }
