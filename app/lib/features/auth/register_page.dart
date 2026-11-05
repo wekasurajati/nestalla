@@ -52,7 +52,7 @@ class _RegisterPageState extends State<RegisterPage> {
     if (!mounted) return;
 
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Account created. Please log in.')),
+      const SnackBar(content: Text('Akun berhasil dibuat. Silakan masuk.')),
     );
     context.go('/login');
   }
@@ -75,7 +75,7 @@ class _RegisterPageState extends State<RegisterPage> {
                     const Center(child: AppLogo()),
                     const SizedBox(height: 8),
                     const Text(
-                      'Please fill in your details to sign up',
+                      'Silakan isi data diri Anda untuk mendaftar',
                       textAlign: TextAlign.center,
                       style: TextStyle(fontSize: 12, color: AppColors.dark),
                     ),
@@ -85,7 +85,7 @@ class _RegisterPageState extends State<RegisterPage> {
                     TextFormField(
                       controller: _usernameCtrl,
                       validator: (v) => (v == null || v.trim().isEmpty)
-                          ? 'Username is required'
+                          ? 'Username wajib diisi'
                           : null,
                     ),
                     const SizedBox(height: 16),
@@ -96,21 +96,21 @@ class _RegisterPageState extends State<RegisterPage> {
                       keyboardType: TextInputType.emailAddress,
                       validator: (v) {
                         if (v == null || v.trim().isEmpty) {
-                          return 'Email is required';
+                          return 'Email wajib diisi';
                         }
                         final ok = RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$')
                             .hasMatch(v.trim());
-                        return ok ? null : 'Enter a valid email address';
+                        return ok ? null : 'Masukkan alamat email yang valid';
                       },
                     ),
                     const SizedBox(height: 16),
-                    const Text('Password'),
+                    const Text('Kata sandi'),
                     const SizedBox(height: 6),
                     TextFormField(
                       controller: _passwordCtrl,
                       obscureText: _hidePassword,
                       validator: (v) => (v == null || v.length < 6)
-                          ? 'Password must be at least 6 characters'
+                          ? 'Kata sandi minimal 6 karakter'
                           : null,
                       decoration: InputDecoration(
                         suffixIcon: IconButton(
@@ -123,13 +123,13 @@ class _RegisterPageState extends State<RegisterPage> {
                       ),
                     ),
                     const SizedBox(height: 16),
-                    const Text('Confirm Password'),
+                    const Text('Konfirmasi kata sandi'),
                     const SizedBox(height: 6),
                     TextFormField(
                       controller: _confirmCtrl,
                       obscureText: _hideConfirm,
                       validator: (v) => v != _passwordCtrl.text
-                          ? 'Passwords do not match'
+                          ? 'Kata sandi tidak cocok'
                           : null,
                       decoration: InputDecoration(
                         suffixIcon: IconButton(
@@ -143,16 +143,16 @@ class _RegisterPageState extends State<RegisterPage> {
                     ),
                     const SizedBox(height: 24),
                     ElevatedButton(
-                        onPressed: _submit, child: const Text('Sign up')),
+                        onPressed: _submit, child: const Text('Daftar')),
                     const SizedBox(height: 24),
                     const SocialLoginRow(),
                     Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        const Text('Already have an account?'),
+                        const Text('Sudah punya akun?'),
                         TextButton(
                           onPressed: () => context.go('/login'),
-                          child: const Text('Login'),
+                          child: const Text('Masuk'),
                         ),
                       ],
                     ),

@@ -8,7 +8,7 @@ class SocialLoginRow extends StatelessWidget {
   Widget build(BuildContext context) {
     return Column(
       children: [
-        const Text('Or continue with', style: TextStyle(fontSize: 12)),
+        const Text('Atau lanjutkan dengan', style: TextStyle(fontSize: 12)),
         const SizedBox(height: 12),
         Row(
           mainAxisAlignment: MainAxisAlignment.center,

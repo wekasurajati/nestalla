@@ -8,6 +8,7 @@ import 'providers/cart_provider.dart';
 import 'providers/notification_provider.dart';
 import 'providers/wishlist_provider.dart';
 import 'repositories/book_repository.dart';
+import 'features/checkout/checkout_repository.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -19,6 +20,9 @@ Future<void> main() async {
         Provider<BookRepository>(create: (_) => DummyBookRepository()),
         ChangeNotifierProvider(create: (_) => WishlistProvider(prefs)),
         ChangeNotifierProvider(create: (_) => CartProvider(prefs)),
+        Provider<CheckoutRepository>(
+          create: (ctx) => DummyCheckoutRepository(ctx.read<BookRepository>()),
+        ),
         ChangeNotifierProvider(create: (_) => NotificationProvider(prefs)),
         // Tiap orang boleh menambah provider miliknya di sini lewat PR kecil.
       ],

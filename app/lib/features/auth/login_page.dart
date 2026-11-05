@@ -49,7 +49,7 @@ class _LoginPageState extends State<LoginPage> {
                     const Center(child: AppLogo()),
                     const SizedBox(height: 8),
                     const Text(
-                      'Please enter your username and password',
+                      'Silakan masukkan username dan kata sandi Anda',
                       textAlign: TextAlign.center,
                       style: TextStyle(fontSize: 12, color: AppColors.dark),
                     ),
@@ -59,7 +59,7 @@ class _LoginPageState extends State<LoginPage> {
                     TextFormField(
                       controller: _usernameCtrl,
                       validator: (v) => (v == null || v.trim().isEmpty)
-                          ? 'Username is required'
+                          ? 'Username wajib diisi'
                           : null,
                     ),
                     const SizedBox(height: 16),
@@ -69,7 +69,7 @@ class _LoginPageState extends State<LoginPage> {
                       controller: _passwordCtrl,
                       obscureText: _hidePassword,
                       validator: (v) => (v == null || v.length < 6)
-                          ? 'Password must be at least 6 characters'
+                          ? 'Kata sandi minimal 6 karakter'
                           : null,
                       decoration: InputDecoration(
                         suffixIcon: IconButton(
@@ -85,7 +85,7 @@ class _LoginPageState extends State<LoginPage> {
                       alignment: Alignment.centerRight,
                       child: TextButton(
                         onPressed: () => context.push('/forgot-password'),
-                        child: const Text('Forgot password?'),
+                        child: const Text('Lupa kata sandi?'),
                       ),
                     ),
                     const SizedBox(height: 8),
@@ -95,10 +95,10 @@ class _LoginPageState extends State<LoginPage> {
                     Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        const Text("Don't have an account?"),
+                        const Text("Belum punya akun?"),
                         TextButton(
                           onPressed: () => context.push('/register'),
-                          child: const Text('Sign up'),
+                          child: const Text('Daftar'),
                         ),
                       ],
                     ),
