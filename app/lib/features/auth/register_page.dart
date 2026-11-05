@@ -1,6 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:provider/provider.dart';
+
 import '../../core/theme/app_colors.dart';
+import '../../models/app_notification.dart';
+import '../../providers/notification_provider.dart';
 import '../../widgets/app_logo.dart';
 import 'widgets/social_login_row.dart';
 
@@ -29,14 +33,28 @@ class _RegisterPageState extends State<RegisterPage> {
     super.dispose();
   }
 
-  void _submit() {
-    if (_formKey.currentState!.validate()) {
-      // TODO minggu 2: panggil API register
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Account created. Please log in.')),
-      );
-      context.go('/login');
-    }
+  Future<void> _submit() async {
+    if (!_formKey.currentState!.validate()) return;
+
+    // TODO minggu 2: panggil API register
+    final username = _usernameCtrl.text.trim();
+    await context.read<NotificationProvider>().add(
+      AppNotification(
+        id: DateTime.now().microsecondsSinceEpoch.toString(),
+        title: 'Akun berhasil dibuat',
+        message:
+            'Selamat datang di Nestalla, ${username.isEmpty ? 'Sahabat Nestalla' : username}. '
+            'Akunmu sudah aktif dan siap digunakan.',
+        createdAt: DateTime.now(),
+        type: AppNotificationType.account,
+      ),
+    );
+    if (!mounted) return;
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Account created. Please log in.')),
+    );
+    context.go('/login');
   }
 
   @override
