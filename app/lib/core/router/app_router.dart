@@ -5,7 +5,10 @@ import '../../widgets/placeholder_page.dart';
 import '../../features/auth/login_page.dart';
 import '../../features/auth/register_page.dart';
 import '../../features/book_detail/book_detail_page.dart';
+import '../../features/home/home_page.dart';
+import '../../features/notification/notification_page.dart';
 import '../../features/profile/my_account_page.dart';
+import '../../features/search/search_page.dart';
 import '../../features/wishlist/wishlist_page.dart';
 import '../../features/auth/forgot_password_page.dart';
 
@@ -27,10 +30,7 @@ final appRouter = GoRouter(
       branches: [
         StatefulShellBranch(
           routes: [
-            GoRoute(
-              path: '/home',
-              builder: (_, _) => const PlaceholderPage('Home'),
-            ), // B
+            GoRoute(path: '/home', builder: (_, _) => const HomePage()), // B
           ],
         ),
         StatefulShellBranch(
@@ -61,13 +61,10 @@ final appRouter = GoRouter(
     ),
 
     // --- Halaman tanpa navbar ---
-    GoRoute(
-      path: '/search',
-      builder: (_, _) => const PlaceholderPage('Search'),
-    ), // B
+    GoRoute(path: '/search', builder: (_, _) => const SearchPage()), // B
     GoRoute(
       path: '/notifications',
-      builder: (_, _) => const PlaceholderPage('Notifications'),
+      builder: (_, _) => const NotificationPage(),
     ), // B
     GoRoute(
       path: '/book/:id',
