@@ -122,8 +122,13 @@ class _WishlistPageState extends State<WishlistPage> {
         const horizontalPadding = 32.0;
         const crossAxisSpacing = 10.0;
         const mainAxisSpacing = 16.0;
-        const detailsHeight = 116.0;
         const columns = 3;
+
+        final textScale = MediaQuery.textScalerOf(context)
+            .scale(1.0)
+            .clamp(1.0, 1.6);
+        final detailsHeight = 120.0 + 20.0 * textScale;
+
         final itemWidth =
             (constraints.maxWidth -
                 horizontalPadding -
