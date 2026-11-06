@@ -5,7 +5,7 @@ import '../../core/theme/app_colors.dart';
 import '../../models/book.dart';
 import '../../repositories/book_repository.dart';
 import 'order.dart';
-import 'order_data.dart';
+import 'order_repository.dart';
 import 'widgets/order_card.dart';
 
 class MyOrderPage extends StatefulWidget {
@@ -16,13 +16,27 @@ class MyOrderPage extends StatefulWidget {
 }
 
 class _MyOrderPageState extends State<MyOrderPage> {
-  late final Future<List<Book>> _booksFuture;
+  late Future<(List<Order>, List<Book>)> _dataFuture;
   OrderStatus? _selectedStatus; // null = All
 
   @override
   void initState() {
     super.initState();
-    _booksFuture = context.read<BookRepository>().getBooks();
+    _dataFuture = _load();
+  }
+
+  Future<(List<Order>, List<Book>)> _load() async {
+    final orderRepository = context.read<OrderRepository>();
+    final bookRepository = context.read<BookRepository>();
+    final orders = await orderRepository.getOrders();
+    final books = await bookRepository.getBooks();
+    return (orders, books);
+  }
+
+  void _reload() {
+    setState(() {
+      _dataFuture = _load();
+    });
   }
 
   @override
@@ -30,28 +44,27 @@ class _MyOrderPageState extends State<MyOrderPage> {
     return Scaffold(
       appBar: AppBar(
         title: const Text(
-          'My Order',
+          'Pesanan Saya',
           style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
         ),
       ),
-      body: FutureBuilder<List<Book>>(
-        future: _booksFuture,
+      body: FutureBuilder<(List<Order>, List<Book>)>(
+        future: _dataFuture,
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
             return const Center(child: CircularProgressIndicator());
           }
-          if (snapshot.hasError) {
+          if (snapshot.hasError || snapshot.data == null) {
             return const _MessageState(
               icon: Icons.error_outline,
-              title: 'Failed to load orders',
-              message: 'Please try again.',
+              title: 'Gagal memuat pesanan',
+              message: 'Silakan coba lagi.',
             );
           }
 
-          final booksById = {
-            for (final book in snapshot.data ?? const <Book>[]) book.id: book,
-          };
-          final visibleOrders = dummyOrders
+          final (orders, books) = snapshot.data!;
+          final booksById = {for (final book in books) book.id: book};
+          final visibleOrders = orders
               .where(
                 (o) =>
                     booksById.containsKey(o.bookId) &&
@@ -70,8 +83,8 @@ class _MyOrderPageState extends State<MyOrderPage> {
                 child: visibleOrders.isEmpty
                     ? const _MessageState(
                         icon: Icons.receipt_long_outlined,
-                        title: 'No orders yet',
-                        message: 'Orders with this status will appear here.',
+                        title: 'Belum ada pesanan',
+                        message: 'Pesanan dengan status ini akan muncul di sini.',
                       )
                     : ListView.separated(
                         padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
@@ -82,6 +95,7 @@ class _MyOrderPageState extends State<MyOrderPage> {
                           return OrderCard(
                             order: order,
                             book: booksById[order.bookId]!,
+                            onReturn: _reload,
                           );
                         },
                       ),
@@ -109,7 +123,7 @@ class _StatusFilter extends StatelessWidget {
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
         children: [
           _StatusChip(
-            label: 'All',
+            label: 'Semua',
             selected: selected == null,
             onTap: () => onSelected(null),
           ),

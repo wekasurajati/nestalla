@@ -7,6 +7,7 @@ final List<Order> dummyOrders = [
     bookId: 1,
     orderDate: DateTime(2026, 10, 20),
     status: OrderStatus.shipped,
+    quantity: 2,
   ),
   Order(
     id: 2,
