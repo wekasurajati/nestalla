@@ -14,7 +14,7 @@ class OrderSummaryCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return SectionCard(
-      title: 'Order summary',
+      title: 'Ringkasan Pesanan',
       child: Column(
         children: [
           for (final item in data.items) ...[
@@ -24,7 +24,7 @@ class OrderSummaryCard extends StatelessWidget {
           const SizedBox(height: 12),
           _AmountRow(label: 'Subtotal', value: data.subtotal),
           const SizedBox(height: 4),
-          _AmountRow(label: 'Shipping', value: data.shippingCost),
+          _AmountRow(label: 'Ongkos Kirim', value: data.shippingCost),
           const Padding(
             padding: EdgeInsets.symmetric(vertical: 8),
             child: Divider(height: 1, color: AppColors.backCircle),
@@ -69,7 +69,7 @@ class _ItemRow extends StatelessWidget {
               ),
               const SizedBox(height: 2),
               Text(
-                'Qty : ${item.quantity}',
+                'Jumlah : ${item.quantity}',
                 style: const TextStyle(fontSize: 10, color: AppColors.dark),
               ),
             ],

@@ -21,12 +21,12 @@ class ShippingFormCard extends StatelessWidget {
   });
 
   static String? _required(String? v, String label) =>
-      (v == null || v.trim().isEmpty) ? '$label is required' : null;
+      (v == null || v.trim().isEmpty) ? '$label wajib diisi' : null;
 
   @override
   Widget build(BuildContext context) {
     return SectionCard(
-      title: 'Shipping Information',
+      title: 'Informasi Pengiriman',
       child: Column(
         children: [
           Row(
@@ -34,17 +34,17 @@ class ShippingFormCard extends StatelessWidget {
             children: [
               Expanded(
                 child: _Field(
-                  label: 'First name',
+                  label: 'Nama depan',
                   controller: firstName,
-                  validator: (v) => _required(v, 'First name'),
+                  validator: (v) => _required(v, 'Nama depan'),
                 ),
               ),
               const SizedBox(width: 8),
               Expanded(
                 child: _Field(
-                  label: 'Last name',
+                  label: 'Nama belakang',
                   controller: lastName,
-                  validator: (v) => _required(v, 'Last name'),
+                  validator: (v) => _required(v, 'Nama belakang'),
                 ),
               ),
             ],
@@ -56,32 +56,32 @@ class ShippingFormCard extends StatelessWidget {
             keyboardType: TextInputType.emailAddress,
             validator: (v) {
               final value = v?.trim() ?? '';
-              if (value.isEmpty) return 'Email is required';
+              if (value.isEmpty) return 'Email wajib diisi';
               final ok = RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$').hasMatch(value);
-              return ok ? null : 'Invalid email';
+              return ok ? null : 'Email tidak valid';
             },
           ),
           const SizedBox(height: 12),
           _Field(
-            label: 'Phone number',
+            label: 'Nomor telepon',
             controller: phone,
             keyboardType: TextInputType.phone,
             validator: (v) {
               final digits = (v ?? '').replaceAll(RegExp(r'[^0-9]'), '');
-              if (digits.isEmpty) return 'Phone number is required';
+              if (digits.isEmpty) return 'Nomor telepon wajib diisi';
               return digits.length >= 8 && digits.length <= 15
                   ? null
-                  : 'Invalid phone number';
+                  : 'Nomor telepon tidak valid';
             },
           ),
           const SizedBox(height: 12),
           _Field(
-            label: 'Address',
+            label: 'Alamat',
             controller: address,
             keyboardType: TextInputType.multiline,
             minLines: 4,
             maxLines: 4,
-            validator: (v) => _required(v, 'Address'),
+            validator: (v) => _required(v, 'Alamat'),
           ),
         ],
       ),

@@ -73,13 +73,13 @@ class _CheckoutPageState extends State<CheckoutPage> {
       if (!mounted) return;
       ScaffoldMessenger.of(
         context,
-      ).showSnackBar(const SnackBar(content: Text('Order placed successfully')));
+      ).showSnackBar(const SnackBar(content: Text('Pesanan berhasil dibuat')));
       context.go('/orders');
     } catch (_) {
       if (!mounted) return;
       setState(() => _submitting = false);
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Failed to place order. Try again.')),
+        const SnackBar(content: Text('Gagal membuat pesanan. Coba lagi.')),
       );
     }
   }
@@ -106,11 +106,11 @@ class _CheckoutPageState extends State<CheckoutPage> {
             return const Center(child: CircularProgressIndicator());
           }
           if (snapshot.hasError || snapshot.data == null) {
-            return const Center(child: Text('Failed to load checkout.'));
+            return const Center(child: Text('Gagal memuat checkout.'));
           }
           final data = snapshot.data!;
           if (data.items.isEmpty) {
-            return const Center(child: Text('Your cart is empty.'));
+            return const Center(child: Text('Keranjang kamu kosong.'));
           }
 
           return Form(
@@ -151,7 +151,7 @@ class _CheckoutPageState extends State<CheckoutPage> {
                     ),
                   )
                 : const Text(
-                    'Order',
+                    'Pesan',
                     style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
                   ),
           ),

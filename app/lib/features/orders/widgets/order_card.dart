@@ -11,7 +11,15 @@ class OrderCard extends StatelessWidget {
   final Order order;
   final Book book;
 
-  const OrderCard({super.key, required this.order, required this.book});
+  /// Dipanggil saat kembali dari halaman detail/ulasan, supaya daftar dimuat ulang.
+  final VoidCallback? onReturn;
+
+  const OrderCard({
+    super.key,
+    required this.order,
+    required this.book,
+    this.onReturn,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -71,7 +79,7 @@ class OrderCard extends StatelessWidget {
                 ),
                 const SizedBox(height: 6),
                 Text(
-                  'Order date: ${_formatDate(order.orderDate)}',
+                  'Tanggal pemesanan: ${formatOrderDate(order.orderDate)}',
                   style: const TextStyle(
                     fontSize: 11,
                     fontWeight: FontWeight.w600,
@@ -91,7 +99,7 @@ class OrderCard extends StatelessWidget {
                       TextSpan(
                         text: order.status.label,
                         style: TextStyle(
-                          color: _statusColor(order.status),
+                          color: order.status.color,
                           fontWeight: FontWeight.bold,
                         ),
                       ),
@@ -102,39 +110,58 @@ class OrderCard extends StatelessWidget {
             ),
           ),
           const SizedBox(width: 8),
-          SizedBox(
-            height: 28,
-            child: ElevatedButton(
-              onPressed: () => context.push('/orders/${order.id}'),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.blue,
-                foregroundColor: AppColors.background,
-                minimumSize: const Size(64, 28),
-                padding: const EdgeInsets.symmetric(horizontal: 14),
-                shape: AppRadius.shape,
-                textStyle: const TextStyle(
-                  fontSize: 11,
-                  fontWeight: FontWeight.w600,
+          Column(
+            children: [
+              SizedBox(
+                height: 28,
+                child: ElevatedButton(
+                  onPressed: () async {
+                    await context.push('/orders/${order.id}');
+                    onReturn?.call();
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.blue,
+                    foregroundColor: AppColors.background,
+                    minimumSize: const Size(72, 28),
+                    padding: const EdgeInsets.symmetric(horizontal: 14),
+                    shape: AppRadius.shape,
+                    textStyle: const TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  child: const Text('Detail'),
                 ),
               ),
-              child: const Text('Detail'),
-            ),
+              // Tombol ulasan hanya untuk pesanan yang sudah selesai.
+              if (order.status == OrderStatus.completed) ...[
+                const SizedBox(height: 8),
+                SizedBox(
+                  height: 28,
+                  child: OutlinedButton(
+                    onPressed: () async {
+                      await context.push('/orders/${order.id}/review');
+                      onReturn?.call();
+                    },
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: AppColors.blue,
+                      side: const BorderSide(color: AppColors.blue),
+                      minimumSize: const Size(72, 28),
+                      padding: const EdgeInsets.symmetric(horizontal: 14),
+                      shape: AppRadius.shape,
+                      textStyle: const TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    child: const Text('Ulasan'),
+                  ),
+                ),
+              ],
+            ],
           ),
         ],
       ),
     );
   }
-
-  static String _formatDate(DateTime d) {
-    final day = d.day.toString().padLeft(2, '0');
-    final month = d.month.toString().padLeft(2, '0');
-    return '$day-$month-${d.year}';
-  }
-
-  static Color _statusColor(OrderStatus status) => switch (status) {
-    OrderStatus.packed => AppColors.blue,
-    OrderStatus.shipped => Colors.orange,
-    OrderStatus.completed => Colors.green,
-    OrderStatus.canceled => Colors.red,
-  };
 }
