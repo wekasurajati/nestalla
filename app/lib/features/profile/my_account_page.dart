@@ -15,7 +15,6 @@ class _MyAccountPageState extends State<MyAccountPage> {
   final _profileKey = GlobalKey<FormState>();
   final _passwordKey = GlobalKey<FormState>();
 
-  // Data dummy. TODO minggu 2: ambil dari API / user yang login.
   final _firstNameCtrl = TextEditingController(text: 'Amartoga');
   final _lastNameCtrl = TextEditingController();
   final _emailCtrl = TextEditingController(text: 'amartoga@gmail.com');

@@ -1,0 +1,50 @@
+import 'dart:convert';
+
+import 'package:flutter/foundation.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+
+import '../repositories/auth_repository.dart';
+
+class AuthProvider extends ChangeNotifier {
+  static const _tokenKey = 'auth_token';
+  static const _userKey = 'auth_user';
+
+  final SharedPreferences _prefs;
+  final AuthRepository _repo;
+
+  String? _token;
+  Map<String, dynamic>? _user;
+
+  AuthProvider(this._prefs, this._repo) {
+    _token = _prefs.getString(_tokenKey);
+    final raw = _prefs.getString(_userKey);
+    if (raw != null) _user = jsonDecode(raw) as Map<String, dynamic>;
+  }
+
+  String? get token => _token;
+  Map<String, dynamic>? get user => _user;
+  bool get isLoggedIn => _token != null;
+
+  Future<void> login(String username, String password) async {
+    final data = await _repo.login(username, password);
+    _token = data['token'] as String;
+    _user = Map<String, dynamic>.of(data)..remove('token');
+    await _prefs.setString(_tokenKey, _token!);
+    await _prefs.setString(_userKey, jsonEncode(_user));
+    notifyListeners();
+  }
+
+  Future<void> register({
+    required String username,
+    required String email,
+    required String password,
+    required String fullName,
+  }) {
+    return _repo.register(
+      username: username,
+      email: email,
+      password: password,
+      fullName: fullName,
+    );
+  }
+}

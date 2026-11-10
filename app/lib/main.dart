@@ -12,6 +12,9 @@ import 'features/checkout/checkout_repository.dart';
 import 'features/orders/order_repository.dart';
 import 'features/review/review_repository.dart';
 
+import 'providers/auth_provider.dart';
+import 'repositories/auth_repository.dart';
+
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   final prefs = await SharedPreferences.getInstance();
@@ -20,6 +23,9 @@ Future<void> main() async {
     MultiProvider(
       providers: [
         Provider<BookRepository>(create: (_) => DummyBookRepository()),
+        ChangeNotifierProvider(
+          create: (_) => AuthProvider(prefs, AuthRepository()),
+        ),
         ChangeNotifierProvider(create: (_) => WishlistProvider(prefs)),
         ChangeNotifierProvider(create: (_) => CartProvider(prefs)),
         Provider<CheckoutRepository>(
@@ -27,7 +33,9 @@ Future<void> main() async {
         ),
         ChangeNotifierProvider(create: (_) => NotificationProvider(prefs)),
         Provider<OrderRepository>(create: (_) => const DummyOrderRepository()),
-        Provider<ReviewRepository>(create: (_) => const DummyReviewRepository()),
+        Provider<ReviewRepository>(
+          create: (_) => const DummyReviewRepository(),
+        ),
         // Tiap orang boleh menambah provider miliknya di sini lewat PR kecil.
       ],
       child: const NestallaApp(),
