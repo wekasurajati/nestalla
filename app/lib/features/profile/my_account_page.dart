@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:provider/provider.dart';
 
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_radius.dart';
+import '../../providers/auth_provider.dart';
 
 class MyAccountPage extends StatefulWidget {
   const MyAccountPage({super.key});
@@ -12,106 +14,53 @@ class MyAccountPage extends StatefulWidget {
 }
 
 class _MyAccountPageState extends State<MyAccountPage> {
-  final _profileKey = GlobalKey<FormState>();
-  final _passwordKey = GlobalKey<FormState>();
+  bool _notifOn = false;
 
-  // Data dummy. TODO minggu 2: ambil dari API / user yang login.
-  final _firstNameCtrl = TextEditingController(text: 'Amartoga');
-  final _lastNameCtrl = TextEditingController();
-  final _emailCtrl = TextEditingController(text: 'amartoga@gmail.com');
-  final _phoneCtrl = TextEditingController(text: '085350714490');
-  final _addressCtrl = TextEditingController();
-
-  final _currentPassCtrl = TextEditingController();
-  final _newPassCtrl = TextEditingController();
-  final _confirmPassCtrl = TextEditingController();
-
-  bool _hideCurrent = true;
-  bool _hideNew = true;
-  bool _hideConfirm = true;
-
-  @override
-  void dispose() {
-    _firstNameCtrl.dispose();
-    _lastNameCtrl.dispose();
-    _emailCtrl.dispose();
-    _phoneCtrl.dispose();
-    _addressCtrl.dispose();
-    _currentPassCtrl.dispose();
-    _newPassCtrl.dispose();
-    _confirmPassCtrl.dispose();
-    super.dispose();
+  void _segeraHadir() {
+    // TODO: navigasi ke halaman tujuan
+    ScaffoldMessenger.of(context)
+        .showSnackBar(const SnackBar(content: Text('Segera hadir')));
   }
 
-  void _showMessage(String msg) {
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
-  }
-
-  void _saveProfile() {
-    if (_profileKey.currentState!.validate()) {
-      // TODO minggu 2: PUT /profile
-      _showMessage('Profil berhasil diperbarui');
-    }
-  }
-
-  void _savePassword() {
-    if (_passwordKey.currentState!.validate()) {
-      // TODO minggu 2: PUT /change-password
-      _currentPassCtrl.clear();
-      _newPassCtrl.clear();
-      _confirmPassCtrl.clear();
-      _showMessage('Kata sandi berhasil diperbarui');
-    }
-  }
-
-  void _logout() {
-    // TODO minggu 2: hapus token login
-    context.go('/login');
-  }
-
-  Widget _label(String text) => Padding(
-    padding: const EdgeInsets.only(bottom: 6),
-    child: Text(text, style: const TextStyle(fontSize: 13)),
-  );
-
-  Widget _passwordField({
-    required TextEditingController controller,
-    required bool hidden,
-    required VoidCallback onToggle,
-    required String? Function(String?) validator,
+  Widget _menuRow({
+    required IconData icon,
+    required String title,
+    required bool chevron,
+    Widget? trailing,
+    required VoidCallback onTap,
   }) {
-    return TextFormField(
-      controller: controller,
-      obscureText: hidden,
-      validator: validator,
-      decoration: InputDecoration(
-        suffixIcon: IconButton(
-          icon: Icon(hidden ? Icons.visibility_off : Icons.visibility),
-          onPressed: onToggle,
+    return SizedBox(
+      height: 56,
+      child: InkWell(
+        onTap: onTap,
+        child: Row(
+          children: [
+            Icon(icon, color: AppColors.navy),
+            const SizedBox(width: 12),
+            Expanded(child: Text(title)),
+            const SizedBox(width: 8),
+            if (trailing != null)
+              trailing
+            else if (chevron) ...[
+              const Icon(Icons.chevron_right, color: AppColors.grey),
+            ],
+          ],
         ),
       ),
     );
   }
 
-  Widget _card({required Widget child}) => Container(
-    padding: const EdgeInsets.all(16),
-    decoration: BoxDecoration(
-      color: Colors.white,
-      borderRadius: AppRadius.border,
-      border: Border.all(color: AppColors.grey),
-    ),
-    child: child,
-  );
-
   @override
   Widget build(BuildContext context) {
+    final fullName =
+        context.watch<AuthProvider>().user?['full_name'] as String?;
+    final displayName = (fullName == null || fullName.isEmpty)
+        ? 'Sahabat Nestalla'
+        : fullName;
+    final initial = displayName.isNotEmpty ? displayName[0].toUpperCase() : 'N';
+
     return Scaffold(
-      appBar: AppBar(
-        title: const Text(
-          'Akun Saya',
-          style: TextStyle(fontWeight: FontWeight.w700),
-        ),
-      ),
+      backgroundColor: AppColors.background,
       body: SafeArea(
         child: Center(
           child: ConstrainedBox(
@@ -119,184 +68,184 @@ class _MyAccountPageState extends State<MyAccountPage> {
             child: ListView(
               padding: const EdgeInsets.all(16),
               children: [
-                // --- Profile ---
-                _card(
-                  child: Form(
-                    key: _profileKey,
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                const Text(
+                  'Profil Saya',
+                  style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+                ),
+                const SizedBox(height: 20),
+
+                // Baris profil
+                Row(
+                  children: [
+                    CircleAvatar(
+                      radius: 28,
+                      backgroundColor: AppColors.lightBlue,
+                      child: Text(
+                        initial,
+                        style: const TextStyle(
+                          color: AppColors.navy,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 24,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Selamat datang',
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: const Color.fromARGB(255, 39, 38, 38),
+                            ),
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            displayName,
+                            style: const TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 16,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 24),
+                const Divider(height: 1, color: AppColors.grey),
+                const SizedBox(height: 24),
+
+                // Daftar menu
+                _menuRow(
+                  icon: Icons.person_outline,
+                  title: 'Profil Saya',
+                  chevron: true,
+                  onTap: () => context.push('/profile/edit'),
+                ),
+                const Divider(height: 1, color: AppColors.grey),
+                _menuRow(
+                  icon: Icons.place_outlined,
+                  title: 'Alamat Saya',
+                  chevron: true,
+                  onTap: _segeraHadir,
+                ),
+                const Divider(height: 1, color: AppColors.grey),
+                _menuRow(
+                  icon: Icons.lock_outline,
+                  title: 'Ubah Kata Sandi',
+                  chevron: true,
+                  onTap: _segeraHadir,
+                ),
+                const Divider(height: 1, color: AppColors.grey),
+                _menuRow(
+                  icon: Icons.help_outline,
+                  title: 'FAQ',
+                  chevron: true,
+                  onTap: _segeraHadir,
+                ),
+                const Divider(height: 1, color: AppColors.grey),
+                SizedBox(
+                  height: 56,
+                  child: InkWell(
+                    onTap: () {},
+                    child: Row(
                       children: [
                         const Icon(
-                          Icons.account_circle_outlined,
-                          size: 64,
-                          color: AppColors.dark,
+                          Icons.notifications_none,
+                          color: AppColors.navy,
                         ),
-                        const SizedBox(height: 4),
-                        const Text(
-                          'Username',
-                          textAlign: TextAlign.center,
-                          style: TextStyle(fontWeight: FontWeight.w700),
-                        ),
-                        const Text(
-                          'amartoga@gmail.com',
-                          textAlign: TextAlign.center,
-                          style: TextStyle(fontSize: 11, color: Colors.grey),
-                        ),
-                        const SizedBox(height: 16),
-                        Row(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  _label('Nama depan'),
-                                  TextFormField(
-                                    controller: _firstNameCtrl,
-                                    validator: (v) =>
-                                        (v == null || v.trim().isEmpty)
-                                        ? 'Nama depan wajib diisi'
-                                        : null,
-                                  ),
-                                ],
-                              ),
-                            ),
-                            const SizedBox(width: 12),
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  _label('Nama belakang'),
-                                  TextFormField(controller: _lastNameCtrl),
-                                ],
-                              ),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 12),
-                        Row(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  _label('Email'),
-                                  TextFormField(
-                                    controller: _emailCtrl,
-                                    keyboardType: TextInputType.emailAddress,
-                                    validator: (v) {
-                                      if (v == null || v.trim().isEmpty) {
-                                        return 'Email wajib diisi';
-                                      }
-                                      final ok = RegExp(
-                                        r'^[^@\s]+@[^@\s]+\.[^@\s]+$',
-                                      ).hasMatch(v.trim());
-                                      return ok ? null : 'Email tidak valid';
-                                    },
-                                  ),
-                                ],
-                              ),
-                            ),
-                            const SizedBox(width: 12),
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  _label('Nomor telepon'),
-                                  TextFormField(
-                                    controller: _phoneCtrl,
-                                    keyboardType: TextInputType.phone,
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 12),
-                        _label('Alamat'),
-                        TextFormField(controller: _addressCtrl, maxLines: 3),
-                        const SizedBox(height: 16),
-                        ElevatedButton(
-                          onPressed: _saveProfile,
-                          child: const Text('Simpan perubahan'),
+                        const SizedBox(width: 12),
+                        const Expanded(child: Text('Notifikasi')),
+                        const SizedBox(width: 8),
+                        Switch(
+                          value: _notifOn,
+                          onChanged: (value) {
+                            // TODO: simpan preferensi notifikasi
+                            setState(() => _notifOn = value);
+                          },
+                          activeThumbColor: AppColors.navy,
                         ),
                       ],
                     ),
                   ),
                 ),
-                const SizedBox(height: 16),
+                const Divider(height: 1, color: AppColors.grey),
+                const SizedBox(height: 24),
 
-                // --- Change Password ---
-                _card(
-                  child: Form(
-                    key: _passwordKey,
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        const Text(
-                          'Ubah Kata Sandi',
+                // Kotak informasi
+                Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: AppColors.lightBlue.withValues(alpha: 0.15),
+                    borderRadius: AppRadius.border,
+                  ),
+                  child: Column(
+                    children: [
+                      const Text(
+                        'Jika ada pertanyaan lain, kamu bisa menghubungi kami.',
+                        textAlign: TextAlign.center,
+                      ),
+                      const SizedBox(height: 8),
+                      GestureDetector(
+                        onTap: () {
+                          // TODO: buka WhatsApp dengan url_launcher
+                          _segeraHadir();
+                        },
+                        child: const Text(
+                          'Hubungi via WhatsApp',
                           style: TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.w700,
+                            color: AppColors.navy,
+                            fontWeight: FontWeight.bold,
+                            decoration: TextDecoration.underline,
                           ),
                         ),
-                        const SizedBox(height: 12),
-                        _label('Kata sandi saat ini'),
-                        _passwordField(
-                          controller: _currentPassCtrl,
-                          hidden: _hideCurrent,
-                          onToggle: () =>
-                              setState(() => _hideCurrent = !_hideCurrent),
-                          validator: (v) => (v == null || v.isEmpty)
-                              ? 'Kata sandi saat ini wajib diisi'
-                              : null,
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 24),
+
+                // Tombol keluar
+                SizedBox(
+                  width: double.infinity,
+                  child: OutlinedButton.icon(
+                    onPressed: () {
+                      showDialog<void>(
+                        context: context,
+                        builder: (dialogContext) => AlertDialog(
+                          title: const Text('Keluar dari akun?'),
+                          actions: [
+                            TextButton(
+                              onPressed: () => Navigator.pop(dialogContext),
+                              child: const Text('Batal'),
+                            ),
+                            TextButton(
+                              onPressed: () {
+                                Navigator.pop(dialogContext);
+                                context.read<AuthProvider>().logout();
+                                if (!mounted) return;
+                                context.go('/login');
+                              },
+                              child: const Text('Keluar'),
+                            ),
+                          ],
                         ),
-                        const SizedBox(height: 12),
-                        _label('Kata sandi baru'),
-                        _passwordField(
-                          controller: _newPassCtrl,
-                          hidden: _hideNew,
-                          onToggle: () => setState(() => _hideNew = !_hideNew),
-                          validator: (v) => (v == null || v.length < 6)
-                              ? 'Kata sandi minimal 6 karakter'
-                              : null,
-                        ),
-                        const SizedBox(height: 12),
-                        _label('Konfirmasi kata sandi baru'),
-                        _passwordField(
-                          controller: _confirmPassCtrl,
-                          hidden: _hideConfirm,
-                          onToggle: () =>
-                              setState(() => _hideConfirm = !_hideConfirm),
-                          validator: (v) => v != _newPassCtrl.text
-                              ? 'Kata sandi tidak cocok'
-                              : null,
-                        ),
-                        const SizedBox(height: 16),
-                        ElevatedButton(
-                          onPressed: _savePassword,
-                          child: const Text('Save changes'),
-                        ),
-                      ],
+                      );
+                    },
+                    icon: const Icon(Icons.logout),
+                    label: const Text('Keluar'),
+                    style: OutlinedButton.styleFrom(
+                      minimumSize: const Size.fromHeight(48),
+                      foregroundColor: Colors.red,
+                      side: const BorderSide(color: Colors.red),
+                      shape: AppRadius.shape,
                     ),
                   ),
                 ),
-                const SizedBox(height: 16),
-
-                // --- Logout ---
-                OutlinedButton.icon(
-                  onPressed: _logout,
-                  icon: const Icon(Icons.logout),
-                  label: const Text('Keluar'),
-                  style: OutlinedButton.styleFrom(
-                    minimumSize: const Size.fromHeight(48),
-                    foregroundColor: Colors.red,
-                    side: const BorderSide(color: Colors.red),
-                    shape: AppRadius.shape,
-                  ),
-                ),
-                const SizedBox(height: 16),
+                const SizedBox(height: 24),
               ],
             ),
           ),
