@@ -9,6 +9,7 @@ import '../../features/cart/cart_page.dart';
 import '../../features/home/home_page.dart';
 import '../../features/notification/notification_page.dart';
 import '../../features/profile/my_account_page.dart';
+import '../../features/profile/user_profile_page.dart';
 import '../../features/search/search_page.dart';
 import '../../features/wishlist/wishlist_page.dart';
 import '../../features/auth/forgot_password_page.dart';
@@ -95,6 +96,10 @@ final appRouter = GoRouter(
       path: '/orders/:id/review',
       builder: (_, s) =>
           ReviewPage(orderId: int.tryParse(s.pathParameters['id'] ?? '')), // D
-),
+    ),
+    GoRoute(
+      path: '/profile/edit',
+      builder: (_, _) => const UserProfilePage(),
+    ), // A
   ],
 );

@@ -47,4 +47,33 @@ class AuthProvider extends ChangeNotifier {
       fullName: fullName,
     );
   }
+
+  Future<void> updateProfile({
+    required String fullName,
+    String? phone,
+    String? birthDate,
+  }) async {
+    final data = await _repo.updateProfile(
+      _token!,
+      fullName: fullName,
+      phone: phone,
+      birthDate: birthDate,
+    );
+    _user = Map<String, dynamic>.from(_user ?? {})..addAll(data);
+    await _prefs.setString(_tokenKey, _token!);
+    await _prefs.setString(_userKey, jsonEncode(_user));
+    notifyListeners();
+  }
+
+  Future<void> logout() async {
+    final tokenLama = _token;
+    _token = null;
+    _user = null;
+    await _prefs.remove(_tokenKey);
+    await _prefs.remove(_userKey);
+    notifyListeners();
+    if (tokenLama != null) {
+      await _repo.logout(tokenLama);
+    }
+  }
 }
