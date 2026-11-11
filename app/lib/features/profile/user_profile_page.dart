@@ -1,11 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
 
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_radius.dart';
 import '../../providers/auth_provider.dart';
 import '../../widgets/back_button.dart';
+import '../../widgets/user_avatar.dart';
 
 class UserProfilePage extends StatefulWidget {
   const UserProfilePage({super.key});
@@ -24,6 +26,7 @@ class _UserProfilePageState extends State<UserProfilePage> {
 
   DateTime? _birthDate;
   bool _isSaving = false;
+  bool _isUploading = false;
 
   @override
   void initState() {
@@ -60,11 +63,6 @@ class _UserProfilePageState extends State<UserProfilePage> {
   // Dikirim ke server: yyyy-MM-dd
   String _server(DateTime d) =>
       '${d.year.toString().padLeft(4, '0')}-${_two(d.month)}-${_two(d.day)}';
-
-  String _initial() {
-    final name = _nameCtrl.text.trim();
-    return name.isEmpty ? 'N' : name[0].toUpperCase();
-  }
 
   Future<void> _pickBirthDate() async {
     final picked = await showDatePicker(
@@ -161,27 +159,25 @@ class _UserProfilePageState extends State<UserProfilePage> {
   }
 
   Widget _avatar() {
+    final user = context.watch<AuthProvider>().user ?? {};
+
     return Center(
       child: Stack(
         children: [
+          if (_isUploading)
+            const Positioned.fill(
+              child: CircularProgressIndicator(
+                strokeWidth: 3,
+                color: AppColors.navy,
+              ),
+            ),
           Container(
             padding: const EdgeInsets.all(4),
             decoration: BoxDecoration(
               shape: BoxShape.circle,
               border: Border.all(color: AppColors.navy, width: 2),
             ),
-            child: CircleAvatar(
-              radius: 48,
-              backgroundColor: AppColors.lightBlue,
-              child: Text(
-                _initial(),
-                style: const TextStyle(
-                  fontSize: 32,
-                  fontWeight: FontWeight.bold,
-                  color: AppColors.navy,
-                ),
-              ),
-            ),
+            child: UserAvatar(user: user, radius: 48),
           ),
           Positioned(
             right: 0,
@@ -200,12 +196,7 @@ class _UserProfilePageState extends State<UserProfilePage> {
                   color: AppColors.navy,
                   size: 18,
                 ),
-                onPressed: () {
-                  // TODO: unggah foto profil
-                  ScaffoldMessenger.of(
-                    context,
-                  ).showSnackBar(const SnackBar(content: Text('Segera hadir')));
-                },
+                onPressed: _isUploading ? null : _pickAvatar,
                 padding: EdgeInsets.zero,
                 constraints: const BoxConstraints(),
                 visualDensity: VisualDensity.compact,
@@ -215,6 +206,36 @@ class _UserProfilePageState extends State<UserProfilePage> {
         ],
       ),
     );
+  }
+
+  Future<void> _pickAvatar() async {
+    final picker = ImagePicker();
+    final picked = await picker.pickImage(
+      source: ImageSource.gallery,
+      maxWidth: 800,
+      imageQuality: 80,
+    );
+    if (picked == null || !mounted) return;
+
+    final bytes = await picked.readAsBytes();
+    if (!mounted) return;
+
+    setState(() => _isUploading = true);
+    try {
+      await context.read<AuthProvider>().updateProfilePhoto(bytes, picked.name);
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Foto profil berhasil diperbarui')),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      final message = e.toString().replaceFirst('Exception: ', '');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(message)),
+      );
+    } finally {
+      if (mounted) setState(() => _isUploading = false);
+    }
   }
 
   @override

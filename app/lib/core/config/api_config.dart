@@ -5,4 +5,7 @@ class ApiConfig {
     'API_BASE',
     defaultValue: 'http://10.0.2.2/nestalla-api/api',
   );
+
+  static String avatarUrl(String filename) =>
+      '${baseUrl.replaceFirst(RegExp(r'/api$'), '')}/image/avatars/$filename';
 }

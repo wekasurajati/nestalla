@@ -65,6 +65,14 @@ class AuthProvider extends ChangeNotifier {
     notifyListeners();
   }
 
+  Future<void> updateProfilePhoto(List<int> bytes, String filename) async {
+    final avatar = await _repo.uploadAvatar(_token!, bytes, filename);
+    _user = Map<String, dynamic>.from(_user ?? {})..['avatar'] = avatar;
+    await _prefs.setString(_tokenKey, _token!);
+    await _prefs.setString(_userKey, jsonEncode(_user));
+    notifyListeners();
+  }
+
   Future<void> logout() async {
     final tokenLama = _token;
     _token = null;

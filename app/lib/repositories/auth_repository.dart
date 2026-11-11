@@ -54,6 +54,27 @@ class AuthRepository {
     return json['data'] as Map<String, dynamic>;
   }
 
+  Future<String> uploadAvatar(String token, List<int> bytes, String filename) async {
+    final request = http.MultipartRequest(
+      'POST',
+      Uri.parse('${ApiConfig.baseUrl}/auth.php?action=upload_avatar'),
+    )
+      ..headers['Authorization'] = 'Bearer $token'
+      ..files.add(
+        http.MultipartFile.fromBytes('avatar', bytes, filename: filename),
+      );
+
+    final response = await request.send();
+    final body = await response.stream.bytesToString();
+    final json = jsonDecode(body) as Map<String, dynamic>;
+
+    if (response.statusCode != 200) {
+      throw Exception(json['message'] ?? 'Upload avatar gagal');
+    }
+
+    return json['data']['avatar'] as String;
+  }
+
   Future<void> register({
     required String username,
     required String email,

@@ -1,4 +1,6 @@
+import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:provider/provider.dart';
 
 import '../../widgets/main_shell.dart';
 import '../../widgets/placeholder_page.dart';
@@ -8,8 +10,13 @@ import '../../features/book_detail/book_detail_page.dart';
 import '../../features/cart/cart_page.dart';
 import '../../features/home/home_page.dart';
 import '../../features/notification/notification_page.dart';
+import '../../features/profile/address_form_page.dart';
+import '../../features/profile/address_page.dart';
+import '../../features/profile/map_picker_page.dart';
 import '../../features/profile/my_account_page.dart';
 import '../../features/profile/user_profile_page.dart';
+import '../../providers/address_provider.dart';
+import '../../models/address.dart';
 import '../../features/search/search_page.dart';
 import '../../features/wishlist/wishlist_page.dart';
 import '../../features/auth/forgot_password_page.dart';
@@ -100,6 +107,25 @@ final appRouter = GoRouter(
     GoRoute(
       path: '/profile/edit',
       builder: (_, _) => const UserProfilePage(),
+    ), // A
+    GoRoute(
+      path: '/profile/addresses',
+      builder: (_, _) => const AddressPage(),
+    ), // A
+    GoRoute(
+      path: '/profile/addresses/form',
+      builder: (context, s) {
+        final editId = s.uri.queryParameters['edit'];
+        Address? address;
+        if (editId != null) {
+          address = context.read<AddressProvider>().getAddressById(int.tryParse(editId) ?? 0);
+        }
+        return AddressFormPage(address: address);
+      },
+    ), // A
+    GoRoute(
+      path: '/profile/map-picker',
+      builder: (_, _) => const MapPickerPage(),
     ), // A
   ],
 );

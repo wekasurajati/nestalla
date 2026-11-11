@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_radius.dart';
 import '../../providers/auth_provider.dart';
+import '../../widgets/user_avatar.dart';
 
 class MyAccountPage extends StatefulWidget {
   const MyAccountPage({super.key});
@@ -52,12 +53,11 @@ class _MyAccountPageState extends State<MyAccountPage> {
 
   @override
   Widget build(BuildContext context) {
-    final fullName =
-        context.watch<AuthProvider>().user?['full_name'] as String?;
+    final user = context.watch<AuthProvider>().user ?? {};
+    final fullName = user['full_name'] as String?;
     final displayName = (fullName == null || fullName.isEmpty)
         ? 'Sahabat Nestalla'
         : fullName;
-    final initial = displayName.isNotEmpty ? displayName[0].toUpperCase() : 'N';
 
     return Scaffold(
       backgroundColor: AppColors.background,
@@ -77,18 +77,7 @@ class _MyAccountPageState extends State<MyAccountPage> {
                 // Baris profil
                 Row(
                   children: [
-                    CircleAvatar(
-                      radius: 28,
-                      backgroundColor: AppColors.lightBlue,
-                      child: Text(
-                        initial,
-                        style: const TextStyle(
-                          color: AppColors.navy,
-                          fontWeight: FontWeight.bold,
-                          fontSize: 24,
-                        ),
-                      ),
-                    ),
+                    UserAvatar(user: user, radius: 28),
                     const SizedBox(width: 12),
                     Expanded(
                       child: Column(
@@ -130,7 +119,7 @@ class _MyAccountPageState extends State<MyAccountPage> {
                   icon: Icons.place_outlined,
                   title: 'Alamat Saya',
                   chevron: true,
-                  onTap: _segeraHadir,
+                  onTap: () => context.push('/profile/addresses'),
                 ),
                 const Divider(height: 1, color: AppColors.grey),
                 _menuRow(
