@@ -333,6 +333,65 @@ else if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_GET['action']) && $_GE
     }
 }
 
+// ========================================
+// UPLOAD AVATAR
+// ========================================
+else if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_GET['action']) && $_GET['action'] === 'upload_avatar') {
+    $user_id = getAuthUserId();
+    if (!$user_id) {
+        sendError('Please login first', 401);
+    }
+
+    if (!isset($_FILES['avatar']) || $_FILES['avatar']['error'] !== UPLOAD_ERR_OK) {
+        sendError('File avatar tidak ditemukan atau gagal diunggah', 400);
+    }
+
+    $file = $_FILES['avatar'];
+
+    if ($file['size'] > 2 * 1024 * 1024) {
+        sendError('Ukuran file maksimal 2 MB', 400);
+    }
+
+    $finfo = finfo_open(FILEINFO_MIME_TYPE);
+    $mime = finfo_file($finfo, $file['tmp_name']);
+    finfo_close($finfo);
+    $allowed = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
+    if (!in_array($mime, $allowed, true)) {
+        sendError('Hanya file gambar (JPG, PNG, WEBP) yang diperbolehkan', 400);
+    }
+
+    $uploadDir = __DIR__ . '/../image/avatars/';
+    if (!is_dir($uploadDir)) {
+        mkdir($uploadDir, 0755, true);
+    }
+
+    $ext = pathinfo($file['name'], PATHINFO_EXTENSION);
+    $filename = 'avatar_' . $user_id . '_' . uniqid('', true) . '.' . $ext;
+    $destination = $uploadDir . $filename;
+
+    if (!move_uploaded_file($file['tmp_name'], $destination)) {
+        sendError('Gagal menyimpan file avatar', 500);
+    }
+
+    $stmt = $conn->prepare('SELECT avatar FROM users WHERE user_id = :id');
+    $stmt->bindParam(':id', $user_id);
+    $stmt->execute();
+    $row = $stmt->fetch(PDO::FETCH_ASSOC);
+    if ($row && !empty($row['avatar'])) {
+        $oldPath = $uploadDir . $row['avatar'];
+        if (file_exists($oldPath)) {
+            @unlink($oldPath);
+        }
+    }
+
+    $stmt = $conn->prepare('UPDATE users SET avatar = :avatar WHERE user_id = :id');
+    $stmt->bindParam(':avatar', $filename);
+    $stmt->bindParam(':id', $user_id);
+    $stmt->execute();
+
+    sendSuccess('Foto profil berhasil diperbarui', ['avatar' => $filename]);
+}
+
 // Method not allowed
 else {
     sendError('Method not allowed', 405);
