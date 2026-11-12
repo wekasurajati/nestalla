@@ -13,6 +13,7 @@ import 'features/orders/order_repository.dart';
 import 'features/review/review_repository.dart';
 
 import 'providers/auth_provider.dart';
+import 'providers/address_provider.dart';
 import 'repositories/auth_repository.dart';
 
 Future<void> main() async {
@@ -32,6 +33,7 @@ Future<void> main() async {
           create: (ctx) => DummyCheckoutRepository(ctx.read<BookRepository>()),
         ),
         ChangeNotifierProvider(create: (_) => NotificationProvider(prefs)),
+        ChangeNotifierProvider(create: (_) => AddressProvider()),
         Provider<OrderRepository>(create: (_) => const DummyOrderRepository()),
         Provider<ReviewRepository>(
           create: (_) => const DummyReviewRepository(),

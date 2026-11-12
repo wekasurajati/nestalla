@@ -10,10 +10,29 @@ class AuthRepository {
       Uri.parse('${ApiConfig.baseUrl}/auth.php?action=login'),
       headers: {'Content-Type': 'application/json'},
       body: jsonEncode({'username': username, 'password': password}),
+    ).timeout(
+      const Duration(seconds: 10),
+      onTimeout: () => throw Exception('Waktu permintaan habis. Periksa koneksi.'),
     );
     final json = jsonDecode(res.body) as Map<String, dynamic>;
     if (res.statusCode != 200) {
       throw Exception(json['message'] ?? 'Login gagal');
+    }
+    return json['data'] as Map<String, dynamic>;
+  }
+
+  Future<Map<String, dynamic>> googleLogin(String idToken) async {
+    final res = await http.post(
+      Uri.parse('${ApiConfig.baseUrl}/auth.php?action=google_login'),
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode({'id_token': idToken}),
+    ).timeout(
+      const Duration(seconds: 10),
+      onTimeout: () => throw Exception('Waktu permintaan habis. Periksa koneksi.'),
+    );
+    final json = jsonDecode(res.body) as Map<String, dynamic>;
+    if (res.statusCode != 200) {
+      throw Exception(json['message'] ?? 'Login Google gagal');
     }
     return json['data'] as Map<String, dynamic>;
   }
@@ -23,6 +42,9 @@ class AuthRepository {
       await http.post(
         Uri.parse('${ApiConfig.baseUrl}/auth.php?action=logout'),
         headers: {'Authorization': 'Bearer $token'},
+      ).timeout(
+        const Duration(seconds: 10),
+        onTimeout: () => throw Exception('Waktu permintaan habis. Periksa koneksi.'),
       );
     } catch (_) {
       // Server tidak terjangkau: jangan melempar error.
@@ -46,12 +68,118 @@ class AuthRepository {
         'phone': phone,
         'birth_date': birthDate,
       }),
+    ).timeout(
+      const Duration(seconds: 10),
+      onTimeout: () => throw Exception('Waktu permintaan habis. Periksa koneksi.'),
     );
     final json = jsonDecode(res.body) as Map<String, dynamic>;
     if (res.statusCode != 200) {
       throw Exception(json['message']);
     }
     return json['data'] as Map<String, dynamic>;
+  }
+
+  Future<void> changePassword(
+    String token, {
+    required String currentPassword,
+    required String newPassword,
+  }) async {
+    final res = await http.post(
+      Uri.parse('${ApiConfig.baseUrl}/auth.php?action=change_password'),
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer $token',
+      },
+      body: jsonEncode({
+        'current_password': currentPassword,
+        'new_password': newPassword,
+      }),
+    ).timeout(
+      const Duration(seconds: 10),
+      onTimeout: () => throw Exception('Waktu permintaan habis. Periksa koneksi.'),
+    );
+    final json = jsonDecode(res.body) as Map<String, dynamic>;
+    if (res.statusCode != 200) {
+      throw Exception(json['message'] ?? 'Gagal mengubah kata sandi');
+    }
+  }
+
+  Future<Map<String, dynamic>> forgotPassword(String email) async {
+    final res = await http.post(
+      Uri.parse('${ApiConfig.baseUrl}/auth.php?action=forgot_password'),
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode({'email': email}),
+    ).timeout(
+      const Duration(seconds: 10),
+      onTimeout: () => throw Exception('Waktu permintaan habis. Periksa koneksi.'),
+    );
+    final json = jsonDecode(res.body) as Map<String, dynamic>;
+    if (res.statusCode != 200) {
+      throw Exception(
+        json['message'] ?? 'Gagal memproses permintaan reset kata sandi',
+      );
+    }
+    return json;
+  }
+
+  Future<String> verifyOtp(String email, String otp) async {
+    final res = await http.post(
+      Uri.parse('${ApiConfig.baseUrl}/auth.php?action=verify_otp'),
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode({'email': email, 'otp': otp}),
+    ).timeout(
+      const Duration(seconds: 10),
+      onTimeout: () => throw Exception('Waktu permintaan habis. Periksa koneksi.'),
+    );
+    final json = jsonDecode(res.body) as Map<String, dynamic>;
+    if (res.statusCode != 200) {
+      throw Exception(json['message'] ?? 'Kode OTP tidak valid');
+    }
+    return json['data']?['reset_token'] as String? ?? '';
+  }
+
+  Future<void> resetPassword(String resetToken, String newPassword) async {
+    final res = await http.post(
+      Uri.parse('${ApiConfig.baseUrl}/auth.php?action=reset_password'),
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode({
+        'reset_token': resetToken,
+        'new_password': newPassword,
+      }),
+    ).timeout(
+      const Duration(seconds: 10),
+      onTimeout: () => throw Exception('Waktu permintaan habis. Periksa koneksi.'),
+    );
+    final json = jsonDecode(res.body) as Map<String, dynamic>;
+    if (res.statusCode != 200) {
+      throw Exception(json['message'] ?? 'Gagal mengubah kata sandi');
+    }
+  }
+
+  Future<String> uploadAvatar(
+    String token,
+    List<int> bytes,
+    String filename,
+  ) async {
+    final request =
+        http.MultipartRequest(
+            'POST',
+            Uri.parse('${ApiConfig.baseUrl}/auth.php?action=upload_avatar'),
+          )
+          ..headers['Authorization'] = 'Bearer $token'
+          ..files.add(
+            http.MultipartFile.fromBytes('avatar', bytes, filename: filename),
+          );
+
+    final response = await request.send();
+    final body = await response.stream.bytesToString();
+    final json = jsonDecode(body) as Map<String, dynamic>;
+
+    if (response.statusCode != 200) {
+      throw Exception(json['message'] ?? 'Upload avatar gagal');
+    }
+
+    return json['data']['avatar'] as String;
   }
 
   Future<void> register({
@@ -69,6 +197,9 @@ class AuthRepository {
         'password': password,
         'full_name': fullName,
       }),
+    ).timeout(
+      const Duration(seconds: 10),
+      onTimeout: () => throw Exception('Waktu permintaan habis. Periksa koneksi.'),
     );
     final json = jsonDecode(res.body) as Map<String, dynamic>;
     if (res.statusCode != 200) {
