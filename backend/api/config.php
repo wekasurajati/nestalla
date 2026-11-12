@@ -10,7 +10,7 @@ session_set_cookie_params([
     'httponly' => true,
     'samesite' => 'Lax'
 ]);
-session_start();
+session_start(['read_and_close' => true]);
 
 // CORS Headers
 $origin = $_SERVER['HTTP_ORIGIN'] ?? '';
@@ -87,6 +87,82 @@ function revokeApiToken($conn) {
         $stmt->bindParam(':token', $m[1]);
         $stmt->execute();
     }
+}
+
+// GOOGLE SIGN-IN
+// Web Client ID dari Google Cloud. Ganti dengan milikmu.
+define('GOOGLE_WEB_CLIENT_ID', '347952003102-1i1unpugipp7pgjj4r0o3q81mu7arujg.apps.googleusercontent.com');
+
+// Memeriksa ID Token ke Google. Mengembalikan data pengguna, atau null jika tidak valid.
+// Melempar Exception jika Google tidak dapat dihubungi.
+function verifyGoogleIdToken($idToken) {
+    $ch = curl_init('https://oauth2.googleapis.com/tokeninfo?id_token=' . urlencode($idToken));
+    curl_setopt_array($ch, [
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_TIMEOUT => 10,
+    ]);
+    $response = curl_exec($ch);
+    $status = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    $curlError = curl_error($ch);
+    curl_close($ch);
+
+    if ($response === false) {
+        error_log('Google tokeninfo error: ' . $curlError);
+        throw new Exception('Tidak dapat menghubungi Google');
+    }
+    if ($status !== 200) {
+        return null;
+    }
+
+    $payload = json_decode($response, true);
+    if (!is_array($payload)) {
+        return null;
+    }
+
+    // Penerbit harus Google
+    $iss = $payload['iss'] ?? '';
+    if ($iss !== 'accounts.google.com' && $iss !== 'https://accounts.google.com') {
+        return null;
+    }
+    // Token harus ditujukan untuk aplikasi KITA
+    if (($payload['aud'] ?? '') !== GOOGLE_WEB_CLIENT_ID) {
+        return null;
+    }
+    // Belum kedaluwarsa
+    if ((int) ($payload['exp'] ?? 0) < time()) {
+        return null;
+    }
+    // Email harus sudah diverifikasi Google
+    $verified = $payload['email_verified'] ?? false;
+    if ($verified !== true && $verified !== 'true') {
+        return null;
+    }
+    if (empty($payload['sub']) || empty($payload['email'])) {
+        return null;
+    }
+
+    return $payload;
+}
+
+// Membuat username unik dari email 
+function generateUniqueUsername($conn, $email) {
+    $base = strtolower(explode('@', $email)[0]);
+    $base = preg_replace('/[^a-z0-9._]/', '', $base);
+    if ($base === '') {
+        $base = 'user';
+    }
+    $base = substr($base, 0, 40);
+
+    $stmt = $conn->prepare('SELECT 1 FROM users WHERE username = :u');
+    $username = $base;
+    for ($i = 1; $i <= 1000; $i++) {
+        $stmt->execute([':u' => $username]);
+        if (!$stmt->fetch()) {
+            return $username;
+        }
+        $username = $base . $i;
+    }
+    return $base . random_int(100000, 999999);
 }
 
 ?>

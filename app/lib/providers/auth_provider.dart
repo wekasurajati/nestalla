@@ -5,15 +5,20 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../repositories/auth_repository.dart';
 
+import 'package:google_sign_in/google_sign_in.dart';
+
 class AuthProvider extends ChangeNotifier {
   static const _tokenKey = 'auth_token';
   static const _userKey = 'auth_user';
+  static const String _webClientId =
+      '347952003102-1i1unpugipp7pgjj4r0o3q81mu7arujg.apps.googleusercontent.com';
 
   final SharedPreferences _prefs;
   final AuthRepository _repo;
 
   String? _token;
   Map<String, dynamic>? _user;
+  bool _googleInitialized = false;
 
   AuthProvider(this._prefs, this._repo) {
     _token = _prefs.getString(_tokenKey);
@@ -27,11 +32,16 @@ class AuthProvider extends ChangeNotifier {
 
   Future<void> login(String username, String password) async {
     final data = await _repo.login(username, password);
+    await _applyLoginResult(data);
+  }
+
+  Future<void> _applyLoginResult(Map<String, dynamic> data) {
     _token = data['token'] as String;
     _user = Map<String, dynamic>.of(data)..remove('token');
-    await _prefs.setString(_tokenKey, _token!);
-    await _prefs.setString(_userKey, jsonEncode(_user));
-    notifyListeners();
+    return Future.wait([
+      _prefs.setString(_tokenKey, _token!),
+      _prefs.setString(_userKey, jsonEncode(_user)),
+    ]).then((_) => notifyListeners());
   }
 
   Future<void> register({
@@ -46,6 +56,26 @@ class AuthProvider extends ChangeNotifier {
       password: password,
       fullName: fullName,
     );
+  }
+
+  Future<bool> loginWithGoogle() async {
+    try {
+      if (!_googleInitialized) {
+        await GoogleSignIn.instance.initialize(serverClientId: _webClientId);
+        _googleInitialized = true;
+      }
+      final auth = await GoogleSignIn.instance.authenticate();
+      final idToken = auth.authentication.idToken;
+      if (idToken == null) throw Exception('ID Token kosong');
+      final data = await _repo.googleLogin(idToken);
+      await _applyLoginResult(data);
+      return true;
+    } on GoogleSignInException catch (e) {
+      if (e.code == GoogleSignInExceptionCode.canceled) {
+        return false;
+      }
+      throw Exception(e.details?.toString() ?? 'Login Google gagal');
+    }
   }
 
   Future<void> updateProfile({
@@ -65,6 +95,32 @@ class AuthProvider extends ChangeNotifier {
     notifyListeners();
   }
 
+  Future<void> changePassword({
+    required String currentPassword,
+    required String newPassword,
+  }) async {
+    if (_token == null) {
+      throw Exception('Silakan login terlebih dahulu');
+    }
+    await _repo.changePassword(
+      _token!,
+      currentPassword: currentPassword,
+      newPassword: newPassword,
+    );
+  }
+
+  Future<void> forgotPassword(String email) async {
+    await _repo.forgotPassword(email);
+  }
+
+  Future<String> verifyOtp(String email, String otp) async {
+    return await _repo.verifyOtp(email, otp);
+  }
+
+  Future<void> resetPassword(String resetToken, String newPassword) async {
+    await _repo.resetPassword(resetToken, newPassword);
+  }
+
   Future<void> updateProfilePhoto(List<int> bytes, String filename) async {
     final avatar = await _repo.uploadAvatar(_token!, bytes, filename);
     _user = Map<String, dynamic>.from(_user ?? {})..['avatar'] = avatar;
@@ -74,6 +130,9 @@ class AuthProvider extends ChangeNotifier {
   }
 
   Future<void> logout() async {
+    try {
+      await GoogleSignIn.instance.signOut();
+    } catch (_) {}
     final tokenLama = _token;
     _token = null;
     _user = null;

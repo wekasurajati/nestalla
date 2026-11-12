@@ -6,6 +6,7 @@ import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_radius.dart';
 import '../../providers/auth_provider.dart';
 import '../../widgets/user_avatar.dart';
+import 'change_password_sheet.dart';
 
 class MyAccountPage extends StatefulWidget {
   const MyAccountPage({super.key});
@@ -126,14 +127,22 @@ class _MyAccountPageState extends State<MyAccountPage> {
                   icon: Icons.lock_outline,
                   title: 'Ubah Kata Sandi',
                   chevron: true,
-                  onTap: _segeraHadir,
+                  onTap: () async {
+                    final ok = await showChangePasswordSheet(context);
+                    if (!context.mounted) return;
+                    if (ok == true) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text('Kata sandi berhasil diperbarui')),
+                      );
+                    }
+                  },
                 ),
                 const Divider(height: 1, color: AppColors.grey),
                 _menuRow(
                   icon: Icons.help_outline,
                   title: 'FAQ',
                   chevron: true,
-                  onTap: _segeraHadir,
+                  onTap: () => context.push('/faq'),
                 ),
                 const Divider(height: 1, color: AppColors.grey),
                 SizedBox(

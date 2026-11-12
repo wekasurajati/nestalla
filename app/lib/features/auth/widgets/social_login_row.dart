@@ -2,7 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 
 class SocialLoginRow extends StatelessWidget {
-  const SocialLoginRow({super.key});
+  final VoidCallback? onGoogle;
+
+  const SocialLoginRow({super.key, this.onGoogle});
 
   @override
   Widget build(BuildContext context) {
@@ -14,8 +16,7 @@ class SocialLoginRow extends StatelessWidget {
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             IconButton(
-              // TODO minggu 2: Google sign-in
-              onPressed: () {},
+              onPressed: onGoogle,
               icon: const FaIcon(FontAwesomeIcons.google,
                   size: 26, color: Color(0xFFDB4437)),
             ),

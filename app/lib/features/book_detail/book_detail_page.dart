@@ -6,6 +6,7 @@ import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_radius.dart';
 import '../../core/utils/currency.dart';
 import '../../models/book.dart';
+import '../../providers/auth_provider.dart';
 import '../../providers/cart_provider.dart';
 import '../../providers/wishlist_provider.dart';
 import '../../repositories/book_repository.dart';
@@ -56,6 +57,10 @@ class _BookDetailPageState extends State<BookDetailPage> {
   }
 
   Future<void> _toggleWishlist(Book book) async {
+    if (!context.read<AuthProvider>().isLoggedIn) {
+      context.push('/login');
+      return;
+    }
     final wishlist = context.read<WishlistProvider>();
     await wishlist.toggle(book.id);
     if (!mounted) return;
@@ -73,6 +78,10 @@ class _BookDetailPageState extends State<BookDetailPage> {
   }
 
   void _addToCart(Book book) {
+    if (!context.read<AuthProvider>().isLoggedIn) {
+      context.push('/login');
+      return;
+    }
     final cart = context.read<CartProvider>();
     if (cart.contains(book.id)) {
       final currentQty = cart.quantityOf(book.id);
