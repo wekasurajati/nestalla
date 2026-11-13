@@ -13,9 +13,13 @@ import '../../features/notification/notification_page.dart';
 import '../../features/profile/address_form_page.dart';
 import '../../features/profile/address_page.dart';
 import '../../features/profile/map_picker_page.dart';
+import '../../features/profile/faq_page.dart';
 import '../../features/profile/my_account_page.dart';
 import '../../features/profile/user_profile_page.dart';
+import '../../features/auth/otp_verification_page.dart';
+import '../../features/auth/reset_password_page.dart';
 import '../../providers/address_provider.dart';
+import '../../providers/auth_provider.dart';
 import '../../models/address.dart';
 import '../../features/search/search_page.dart';
 import '../../features/wishlist/wishlist_page.dart';
@@ -29,6 +33,46 @@ import '../../features/orders/order_detail_page.dart';
 // Pemilik page: ganti PlaceholderPage dengan page asli kalian.
 final appRouter = GoRouter(
   initialLocation: '/home',
+  redirect: (context, state) {
+    final loggedIn = context.read<AuthProvider>().isLoggedIn;
+
+    // Route publik yang tidak butuh auth
+    final publicRoutes = [
+      '/login',
+      '/register',
+      '/forgot-password',
+      '/otp-verification',
+      '/reset-password',
+      '/home',
+      '/search',
+      '/notifications',
+      '/faq',
+    ];
+
+    final isPublic = publicRoutes.any((route) =>
+        state.matchedLocation == route ||
+        state.matchedLocation.startsWith('$route/'));
+
+    // /book/:id adalah publik (bisa dilihat tanpa login)
+    final isBookRoute = state.matchedLocation.startsWith('/book/');
+
+    if (isPublic || isBookRoute) {
+      // Sudah login dan coba akses login/register → arahkan ke home
+      if (loggedIn &&
+          (state.matchedLocation == '/login' ||
+              state.matchedLocation == '/register')) {
+        return '/home';
+      }
+      return null;
+    }
+
+    // Route lain (cart, orders, wishlist, profile, checkout, dll) butuh auth
+    if (!loggedIn) {
+      return '/login';
+    }
+
+    return null;
+  },
   routes: [
     // --- Orang A: auth ---
     GoRoute(path: '/login', builder: (_, _) => const LoginPage()),
@@ -126,6 +170,18 @@ final appRouter = GoRouter(
     GoRoute(
       path: '/profile/map-picker',
       builder: (_, _) => const MapPickerPage(),
+    ), // A
+    GoRoute(
+      path: '/faq',
+      builder: (_, _) => const FaqPage(),
+    ), // A
+    GoRoute(
+      path: '/otp-verification',
+      builder: (_, _) => const OtpVerificationPage(),
+    ), // A
+    GoRoute(
+      path: '/reset-password',
+      builder: (_, _) => const ResetPasswordPage(),
     ), // A
   ],
 );
