@@ -49,6 +49,23 @@ class _LoginPageState extends State<LoginPage> {
     }
   }
 
+  Future<void> _googleLogin() async {
+    setState(() => _loading = true);
+    try {
+      final ok = await context.read<AuthProvider>().loginWithGoogle();
+      if (!mounted) return;
+      if (ok)
+        context.go('/home'); // false = user menutup dialog, tidak ngapa-ngapain
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(e.toString().replaceFirst('Exception: ', ''))),
+      );
+    } finally {
+      if (mounted) setState(() => _loading = false);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -58,13 +75,29 @@ class _LoginPageState extends State<LoginPage> {
             padding: const EdgeInsets.symmetric(horizontal: 32),
             child: ConstrainedBox(
               constraints: const BoxConstraints(maxWidth: 400),
-              child: Form(
-                key: _formKey,
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    const Center(child: AppLogo()),
+    child: Form(
+      key: _formKey,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              IconButton(
+                icon: const Icon(Icons.arrow_back),
+                onPressed: () =>
+                    context.canPop() ? context.pop() : context.go('/home'),
+              ),
+              const Text(
+                'Masuk',
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(width: 48),
+            ],
+          ),
+          const SizedBox(height: 24),
+          const Center(child: AppLogo()),
                     const SizedBox(height: 8),
                     const Text(
                       'Silakan masukkan username dan kata sandi Anda',
@@ -123,7 +156,7 @@ class _LoginPageState extends State<LoginPage> {
                           : const Text('Login'),
                     ),
                     const SizedBox(height: 24),
-                    const SocialLoginRow(),
+                    SocialLoginRow(onGoogle: _loading ? null : _googleLogin),
                     Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
