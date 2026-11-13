@@ -14,3 +14,11 @@ doc/api/
 .idea/
 *.iml
 .vscode/
+
+# Backend
+backend/config/database.php
+backend/config/email.php
+backend/image/*
+!backend/image/.gitkeep
+backend/test-*.php
+.env
