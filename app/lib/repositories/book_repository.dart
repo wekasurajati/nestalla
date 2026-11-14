@@ -4,6 +4,12 @@ import '../models/book_review.dart';
 abstract class BookRepository {
   Future<List<Book>> getBooks();
   Future<Book?> getBookById(int id);
+  Future<List<Book>> searchBooks(String query);
+  Future<List<String>> getCategories();
+  Future<List<Book>> getFeatured();
+  Future<List<Book>> getDiscounts();
+  Future<List<Book>> getNewest();
+  Future<List<Book>> getBooksByCategory(String category);
 }
 
 /// Data dummy. Nanti diganti ApiBookRepository yang memanggil REST API.
@@ -316,4 +322,40 @@ class DummyBookRepository implements BookRepository {
     }
     return null;
   }
+
+  @override
+  Future<List<Book>> searchBooks(String query) async {
+    final q = query.trim().toLowerCase();
+    if (q.isEmpty) return _books;
+    return _books.where((b) {
+      final title = b.title.toLowerCase();
+      final author = b.author.toLowerCase();
+      return title.contains(q) || author.contains(q);
+    }).toList();
+  }
+
+  @override
+  Future<List<String>> getCategories() async {
+    final cats = _books.map((b) => b.category).toSet().toList()..sort();
+    return cats;
+  }
+
+  @override
+  Future<List<Book>> getFeatured() async =>
+      _books.where((b) => b.isFeatured).toList();
+
+  @override
+  Future<List<Book>> getDiscounts() async =>
+      _books.where((b) => b.isDiscount).toList();
+
+  @override
+  Future<List<Book>> getNewest() async {
+    final sorted = List<Book>.from(_books)
+      ..sort((a, b) => (b.publishedYear ?? 0).compareTo(a.publishedYear ?? 0));
+    return sorted;
+  }
+
+  @override
+  Future<List<Book>> getBooksByCategory(String category) async =>
+      _books.where((b) => b.category == category).toList();
 }

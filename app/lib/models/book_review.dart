@@ -10,4 +10,11 @@ class BookReview {
     this.rating = 5,
     this.avatarUrl = '',
   });
+
+  factory BookReview.fromJson(Map<String, dynamic> json) => BookReview(
+        name: json['name'] as String,
+        comment: json['comment'] as String,
+        rating: (json['rating'] as num?)?.toDouble() ?? 5,
+        avatarUrl: json['avatar_url'] as String? ?? '',
+      );
 }
