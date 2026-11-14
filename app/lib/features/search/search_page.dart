@@ -16,16 +16,15 @@ class SearchPage extends StatefulWidget {
 }
 
 class _SearchPageState extends State<SearchPage> {
-  late final Future<List<Book>> _booksFuture;
+  Future<List<Book>>? _searchFuture;
   final TextEditingController _controller = TextEditingController();
   final FocusNode _focusNode = FocusNode();
   String _query = '';
-  bool _isDialogOpen = false;
 
   @override
   void initState() {
     super.initState();
-    _booksFuture = context.read<BookRepository>().getBooks();
+    _searchFuture = context.read<BookRepository>().getBooks();
   }
 
   @override
@@ -35,57 +34,21 @@ class _SearchPageState extends State<SearchPage> {
     super.dispose();
   }
 
-  List<Book> _filterBooks(List<Book> books) {
-    final query = _query.trim().toLowerCase();
-    if (query.isEmpty) return books;
-    return books.where((book) {
-      final title = book.title.toLowerCase();
-      final author = book.author.toLowerCase();
-      return title.contains(query) || author.contains(query);
-    }).toList();
-  }
-
-  void _handleSubmit(List<Book> books) {
-    final query = _query.trim();
-    if (query.isEmpty) return;
-    _focusNode.unfocus();
-    if (_filterBooks(books).isEmpty) {
-      _showNotFoundDialog(query);
-    }
+  Future<void> _performSearch(String query) async {
+    if (!mounted) return;
+    setState(() {
+      _query = query;
+      _searchFuture = context.read<BookRepository>().searchBooks(query);
+    });
   }
 
   void _clearSearch() {
     _controller.clear();
-    setState(() => _query = '');
+    setState(() {
+      _query = '';
+      _searchFuture = context.read<BookRepository>().getBooks();
+    });
     _focusNode.requestFocus();
-  }
-
-  Future<void> _showNotFoundDialog(String query) async {
-    if (_isDialogOpen) return;
-    _isDialogOpen = true;
-    await showDialog<void>(
-      context: context,
-      builder: (dialogContext) => AlertDialog(
-        shape: AppRadius.shape,
-        icon: const Icon(
-          Icons.search_off,
-          size: 40,
-          color: AppColors.lightBlue,
-        ),
-        title: const Text('Buku tidak ditemukan'),
-        content: Text(
-          'Tidak ada buku dengan judul "$query". '
-          'Coba gunakan kata kunci lain.',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(dialogContext).pop(),
-            child: const Text('OK'),
-          ),
-        ],
-      ),
-    );
-    _isDialogOpen = false;
   }
 
   @override
@@ -100,66 +63,68 @@ class _SearchPageState extends State<SearchPage> {
         actions: const [HeaderActionButtons(), SizedBox(width: 16)],
       ),
       body: SafeArea(
-        child: FutureBuilder<List<Book>>(
-          future: _booksFuture,
-          builder: (context, snapshot) {
-            if (snapshot.connectionState == ConnectionState.waiting) {
-              return const Center(child: CircularProgressIndicator());
-            }
-            if (snapshot.hasError) {
-              return const _MessageState(
-                icon: Icons.error_outline,
-                title: 'Gagal memuat buku',
-                message: 'Silakan coba lagi nanti.',
-              );
-            }
+        child: Column(
+          children: [
+            _SearchField(
+              controller: _controller,
+              focusNode: _focusNode,
+              hasQuery: _query.trim().isNotEmpty,
+              onChanged: (value) => setState(() => _query = value),
+              onSubmitted: () {
+                final q = _query.trim();
+                if (q.isEmpty) return;
+                _focusNode.unfocus();
+                _performSearch(q);
+              },
+              onClear: _clearSearch,
+            ),
+            Expanded(
+              child: FutureBuilder<List<Book>>(
+                future: _searchFuture,
+                builder: (context, snapshot) {
+                  if (snapshot.connectionState == ConnectionState.waiting) {
+                    return const Center(child: CircularProgressIndicator());
+                  }
+                  if (snapshot.hasError) {
+                    return const _MessageState(
+                      icon: Icons.error_outline,
+                      title: 'Gagal memuat buku',
+                      message: 'Silakan coba lagi nanti.',
+                    );
+                  }
 
-            final allBooks = snapshot.data ?? const <Book>[];
-            final results = _filterBooks(allBooks);
-            final hasQuery = _query.trim().isNotEmpty;
+                  final results = snapshot.data ?? const <Book>[];
+                  final hasQuery = _query.trim().isNotEmpty;
 
-            return Column(
-              children: [
-                _SearchField(
-                  controller: _controller,
-                  focusNode: _focusNode,
-                  hasQuery: hasQuery,
-                  onChanged: (value) => setState(() => _query = value),
-                  onSubmitted: () => _handleSubmit(allBooks),
-                  onClear: _clearSearch,
-                ),
-                if (results.isNotEmpty)
-                  Padding(
-                    padding: const EdgeInsets.fromLTRB(16, 4, 16, 8),
-                    child: Align(
-                      alignment: Alignment.centerLeft,
-                      child: Text(
-                        hasQuery
-                            ? '${results.length} buku ditemukan'
-                            : 'Semua buku (${results.length})',
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: AppColors.dark.withValues(alpha: 0.7),
+                  if (results.isEmpty) {
+                    return _MessageState(
+                      icon: Icons.search_off,
+                      title: 'Buku tidak ditemukan',
+                      message:
+                          'Tidak ada buku dengan judul "$_query". '
+                          'Coba kata kunci lain.',
+                    );
+                  }
+
+                  return Column(
+                    children: [
+                      Padding(
+                        padding: const EdgeInsets.fromLTRB(16, 4, 16, 8),
+                        child: Align(
+                          alignment: Alignment.centerLeft,
+                          child: Text(
+                            hasQuery
+                                ? '${results.length} buku ditemukan'
+                                : 'Semua buku (${results.length})',
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: AppColors.dark.withValues(alpha: 0.7),
+                            ),
+                          ),
                         ),
                       ),
-                    ),
-                  ),
-                Expanded(
-                  child: results.isEmpty
-                      ? hasQuery
-                            ? _MessageState(
-                                icon: Icons.search_off,
-                                title: 'Buku tidak ditemukan',
-                                message:
-                                    'Tidak ada buku dengan judul "$_query". '
-                                    'Coba kata kunci lain.',
-                              )
-                            : const _MessageState(
-                                icon: Icons.menu_book,
-                                title: 'Belum ada buku',
-                                message: 'Katalog buku akan segera hadir.',
-                              )
-                      : ListView.separated(
+                      Expanded(
+                        child: ListView.separated(
                           padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
                           itemCount: results.length,
                           separatorBuilder: (_, _) =>
@@ -167,10 +132,13 @@ class _SearchPageState extends State<SearchPage> {
                           itemBuilder: (context, index) =>
                               SearchResultTile(book: results[index]),
                         ),
-                ),
-              ],
-            );
-          },
+                      ),
+                    ],
+                  );
+                },
+              ),
+            ),
+          ],
         ),
       ),
     );

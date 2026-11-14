@@ -8,4 +8,7 @@ class ApiConfig {
 
   static String avatarUrl(String filename) =>
       '${baseUrl.replaceFirst(RegExp(r'/api$'), '')}/image/avatars/$filename';
+
+  static String bookCoverUrl(String filename) =>
+      '${baseUrl.replaceFirst(RegExp(r'/api$'), '')}/image/covers/$filename';
 }
