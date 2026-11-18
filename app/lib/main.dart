@@ -32,8 +32,12 @@ Future<void> main() async {
         ChangeNotifierProvider(
           create: (_) => AuthProvider(prefs, AuthRepository()),
         ),
-        ChangeNotifierProvider(create: (_) => WishlistProvider(prefs)),
-        ChangeNotifierProvider(create: (_) => CartProvider(prefs)),
+        ChangeNotifierProvider(
+          create: (ctx) => WishlistProvider(prefs, ctx.read<AuthProvider>()),
+        ),
+        ChangeNotifierProvider(
+          create: (ctx) => CartProvider(prefs, ctx.read<AuthProvider>()),
+        ),
         Provider<CheckoutRepository>(
           create: (ctx) => DummyCheckoutRepository(ctx.read<BookRepository>()),
         ),

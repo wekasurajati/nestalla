@@ -6,16 +6,15 @@ require_once 'config.php';
 $database = new Database();
 $conn = $database->getConnection();
 
-if (!isset($_SESSION['user_id'])) {
+$user_id = getAuthUserId();
+if (!$user_id) {
     sendError('Please login first', 401);
 }
-
-$user_id = $_SESSION['user_id'];
 
 // ========================================
 // GET USER'S WISHLIST
 // ========================================
-if ($_SERVER['REQUEST_METHOD'] === 'GET') {
+if ($_SERVER['REQUEST_METHOD'] === 'GET' && !isset($_GET['check'])) {
     
     try {
         $query = "SELECT w.*, b.title, b.author, b.price, b.old_price, b.image, b.stock, b.rating 
