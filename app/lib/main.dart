@@ -9,6 +9,7 @@ import 'providers/notification_provider.dart';
 import 'providers/wishlist_provider.dart';
 import 'repositories/book_repository.dart';
 import 'repositories/api_book_repository.dart';
+import 'features/book_detail/book_detail_provider.dart';
 import 'features/checkout/checkout_repository.dart';
 import 'features/orders/order_repository.dart';
 import 'features/review/review_repository.dart';
@@ -25,6 +26,9 @@ Future<void> main() async {
     MultiProvider(
       providers: [
         Provider<BookRepository>(create: (_) => ApiBookRepository()),
+        ChangeNotifierProvider(
+          create: (_) => BookDetailProvider(ApiBookRepository()),
+        ),
         ChangeNotifierProvider(
           create: (_) => AuthProvider(prefs, AuthRepository()),
         ),
