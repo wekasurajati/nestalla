@@ -9,10 +9,10 @@ import '../../models/book.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/cart_provider.dart';
 import '../../providers/wishlist_provider.dart';
-import '../../repositories/book_repository.dart';
 import '../../widgets/back_button.dart';
 import '../../widgets/book_cover.dart';
 import '../../widgets/rating_label.dart';
+import 'book_detail_provider.dart';
 import 'widgets/review_card.dart';
 
 class BookDetailPage extends StatefulWidget {
@@ -25,27 +25,24 @@ class BookDetailPage extends StatefulWidget {
 }
 
 class _BookDetailPageState extends State<BookDetailPage> {
-  late Future<Book?> _bookFuture;
-
   @override
   void initState() {
     super.initState();
-    _bookFuture = _loadBook();
+    _loadBook();
   }
 
   @override
   void didUpdateWidget(covariant BookDetailPage oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.bookId != widget.bookId) {
-      _bookFuture = _loadBook();
+      _loadBook();
     }
   }
 
-  Future<Book?> _loadBook() {
+  void _loadBook() {
     final id = widget.bookId;
-    return id == null
-        ? Future<Book?>.value(null)
-        : context.read<BookRepository>().getBookById(id);
+    if (id == null) return;
+    context.read<BookDetailProvider>().load(id);
   }
 
   void _goBack() {
@@ -106,41 +103,45 @@ class _BookDetailPageState extends State<BookDetailPage> {
   @override
   Widget build(BuildContext context) {
     final wishlist = context.watch<WishlistProvider>();
+    final detail = context.watch<BookDetailProvider>();
+    final bookId = widget.bookId;
+
+    Widget body;
+    if (bookId == null || detail.isNotFound) {
+      body = _MessageState(
+        title: 'Buku tidak ditemukan',
+        message: 'Buku yang kamu cari tidak tersedia.',
+        onBack: _goBack,
+      );
+    } else if (detail.isLoading) {
+      body = const Center(child: CircularProgressIndicator());
+    } else if (detail.errorMessage != null) {
+      body = _MessageState(
+        title: 'Gagal memuat buku',
+        message: detail.errorMessage!,
+        onBack: _goBack,
+        onRetry: _loadBook,
+      );
+    } else if (detail.book == null) {
+      body = _MessageState(
+        title: 'Buku tidak ditemukan',
+        message: 'Buku yang kamu cari tidak tersedia.',
+        onBack: _goBack,
+      );
+    } else {
+      final book = detail.book!;
+      body = _BookDetailContent(
+        book: book,
+        isWishlisted: wishlist.contains(book.id),
+        onToggleWishlist: () => _toggleWishlist(book),
+        onAddToCart: () => _addToCart(book),
+        onBack: _goBack,
+      );
+    }
 
     return Scaffold(
       backgroundColor: AppColors.background,
-      body: SafeArea(
-        child: FutureBuilder<Book?>(
-          future: _bookFuture,
-          builder: (context, snapshot) {
-            if (snapshot.connectionState == ConnectionState.waiting) {
-              return const Center(child: CircularProgressIndicator());
-            }
-            if (snapshot.hasError) {
-              return _MessageState(
-                title: 'Gagal memuat buku',
-                message: 'Silakan coba lagi.',
-                onBack: _goBack,
-              );
-            }
-            final book = snapshot.data;
-            if (book == null) {
-              return _MessageState(
-                title: 'Buku tidak ditemukan',
-                message: 'Buku yang kamu cari tidak tersedia.',
-                onBack: _goBack,
-              );
-            }
-            return _BookDetailContent(
-              book: book,
-              isWishlisted: wishlist.contains(book.id),
-              onToggleWishlist: () => _toggleWishlist(book),
-              onAddToCart: () => _addToCart(book),
-              onBack: _goBack,
-            );
-          },
-        ),
-      ),
+      body: SafeArea(child: body),
     );
   }
 }
@@ -390,11 +391,13 @@ class _MessageState extends StatelessWidget {
   final String title;
   final String message;
   final VoidCallback onBack;
+  final VoidCallback? onRetry;
 
   const _MessageState({
     required this.title,
     required this.message,
     required this.onBack,
+    this.onRetry,
   });
 
   @override
@@ -429,7 +432,17 @@ class _MessageState extends StatelessWidget {
                   style: const TextStyle(fontSize: 13, color: AppColors.dark),
                 ),
                 const SizedBox(height: 16),
-                TextButton(onPressed: onBack, child: const Text('Kembali')),
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    if (onRetry != null)
+                      TextButton(
+                        onPressed: onRetry,
+                        child: const Text('Coba lagi'),
+                      ),
+                    TextButton(onPressed: onBack, child: const Text('Kembali')),
+                  ],
+                ),
               ],
             ),
           ),
