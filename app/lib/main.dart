@@ -11,7 +11,9 @@ import 'repositories/book_repository.dart';
 import 'repositories/api_book_repository.dart';
 import 'features/book_detail/book_detail_provider.dart';
 import 'features/checkout/checkout_repository.dart';
+import 'features/orders/api_order_repository.dart';
 import 'features/orders/order_repository.dart';
+import 'features/review/api_review_repository.dart';
 import 'features/review/review_repository.dart';
 
 import 'providers/auth_provider.dart';
@@ -43,9 +45,11 @@ Future<void> main() async {
         ),
         ChangeNotifierProvider(create: (_) => NotificationProvider(prefs)),
         ChangeNotifierProvider(create: (_) => AddressProvider()),
-        Provider<OrderRepository>(create: (_) => const DummyOrderRepository()),
+        Provider<OrderRepository>(
+          create: (ctx) => ApiOrderRepository(ctx.read<AuthProvider>()),
+        ),
         Provider<ReviewRepository>(
-          create: (_) => const DummyReviewRepository(),
+          create: (ctx) => ApiReviewRepository(ctx.read<AuthProvider>()),
         ),
         // Tiap orang boleh menambah provider miliknya di sini lewat PR kecil.
       ],

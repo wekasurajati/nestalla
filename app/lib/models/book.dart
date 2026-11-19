@@ -38,7 +38,7 @@ class Book {
   });
 
   factory Book.fromJson(Map<String, dynamic> json) => Book(
-        id: (json['book_id'] as num?)?.toInt() ?? (json['id'] as num?)?.toInt() ?? 0,
+        id: int.tryParse((json['book_id'] ?? json['id'] ?? '0').toString()) ?? 0,
         title: json['title'] as String,
         author: json['author'] as String,
         publisher: json['publisher'] as String? ?? '',
@@ -51,9 +51,9 @@ class Book {
         category: json['category'] as String,
         stock: int.tryParse(json['stock']?.toString() ?? '10') ?? 10,
         rating: double.tryParse(json['rating']?.toString() ?? '4.5') ?? 4.5,
-        isFeatured: (json['is_featured'] as num?)?.toInt() == 1,
-        isDiscount: (json['is_discount'] as num?)?.toInt() == 1,
-        publishedYear: (json['published_year'] as num?)?.toInt(),
+        isFeatured: int.tryParse(json['is_featured']?.toString() ?? '') == 1,
+        isDiscount: int.tryParse(json['is_discount']?.toString() ?? '') == 1,
+        publishedYear: int.tryParse(json['published_year']?.toString() ?? ''),
         ageRating: json['age_rating'] as String?,
         reviews: (json['reviews'] as List<dynamic>?)
             ?.map((e) => BookReview.fromJson(e as Map<String, dynamic>))

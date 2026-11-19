@@ -23,6 +23,14 @@ class OrderSummaryCard extends StatelessWidget {
           ],
           const SizedBox(height: 12),
           _AmountRow(label: 'Subtotal', value: data.subtotal),
+          if (data.discountAmount > 0) ...[
+            const SizedBox(height: 4),
+            _AmountRow(label: 'Diskon', value: data.discountAmount, negative: true),
+          ],
+          if (data.tax > 0) ...[
+            const SizedBox(height: 4),
+            _AmountRow(label: 'Pajak', value: data.tax),
+          ],
           const SizedBox(height: 4),
           _AmountRow(label: 'Ongkos Kirim', value: data.shippingCost),
           const Padding(
@@ -93,11 +101,13 @@ class _AmountRow extends StatelessWidget {
   final String label;
   final int value;
   final bool bold;
+  final bool negative;
 
   const _AmountRow({
     required this.label,
     required this.value,
     this.bold = false,
+    this.negative = false,
   });
 
   @override
@@ -110,7 +120,7 @@ class _AmountRow extends StatelessWidget {
           style: const TextStyle(fontSize: 12, color: AppColors.dark),
         ),
         Text(
-          formatRupiah(value),
+          negative ? '-${formatRupiah(value)}' : formatRupiah(value),
           style: TextStyle(
             fontSize: bold ? 14 : 12,
             fontWeight: bold ? FontWeight.bold : FontWeight.normal,
