@@ -1,75 +1,145 @@
-import 'dart:convert';
+import 'dart:async';
 
 import 'package:flutter/foundation.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 
 import '../models/app_notification.dart';
+import '../repositories/notification_repository.dart';
+import 'auth_provider.dart';
 
 class NotificationProvider extends ChangeNotifier {
-  static const _itemsKey = 'app_notifications';
+  NotificationProvider(this._auth, this._repo) {
+    _lastToken = _auth.token;
+    _auth.addListener(_onAuthChanged);
+    if (_lastToken != null) unawaited(load());
+  }
 
-  final SharedPreferences _prefs;
-  final List<AppNotification> _items;
+  final AuthProvider _auth;
+  final ApiNotificationRepository _repo;
 
-  NotificationProvider(this._prefs) : _items = _load(_prefs);
+  final List<AppNotification> _items = <AppNotification>[];
+  bool _isLoading = false;
+  String? _error;
+  String? _lastToken;
 
   List<AppNotification> get items => List.unmodifiable(_items);
 
   int get unreadCount => _items.where((item) => !item.isRead).length;
 
-  Future<void> add(AppNotification notification) async {
-    _items.removeWhere((item) => item.id == notification.id);
-    _items.insert(0, notification);
+  bool get isLoading => _isLoading;
+
+  String? get error => _error;
+
+  @override
+  void dispose() {
+    _auth.removeListener(_onAuthChanged);
+    super.dispose();
+  }
+
+  void _onAuthChanged() {
+    final token = _auth.token;
+    if (token == _lastToken) return;
+    _lastToken = token;
+    if (token == null) {
+      _items.clear();
+      _error = null;
+      _isLoading = false;
+      notifyListeners();
+      return;
+    }
+    unawaited(load());
+  }
+
+  Future<void> load() async {
+    final token = _auth.token;
+    if (token == null) {
+      _items.clear();
+      _error = null;
+      _isLoading = false;
+      notifyListeners();
+      return;
+    }
+
+    _isLoading = true;
+    _error = null;
     notifyListeners();
-    await _save();
+    try {
+      final fetched = await _repo.getNotifications(token);
+      _items
+        ..clear()
+        ..addAll(fetched);
+      _items.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+    } catch (e) {
+      _error = _message(e);
+    } finally {
+      _isLoading = false;
+      notifyListeners();
+    }
+  }
+
+  Future<void> refresh() => load();
+
+  Future<void> add(AppNotification _) async {
+    if (_auth.token == null) return;
+    await load();
   }
 
   Future<void> markAsRead(String id) async {
+    final token = _auth.token;
+    if (token == null) return;
     final index = _items.indexWhere((item) => item.id == id);
     if (index == -1 || _items[index].isRead) return;
-    _items[index] = _items[index].copyWith(isRead: true);
+    final previous = _items[index];
+    _items[index] = previous.copyWith(isRead: true);
+    _error = null;
     notifyListeners();
-    await _save();
+    try {
+      final updated = await _repo.markAsRead(token, id);
+      _items[index] = updated;
+      notifyListeners();
+    } catch (e) {
+      _items[index] = previous;
+      _error = _message(e);
+      notifyListeners();
+    }
   }
 
   Future<void> markAllAsRead() async {
-    if (unreadCount == 0) return;
+    final token = _auth.token;
+    if (token == null || unreadCount == 0) return;
+    final previous = List<AppNotification>.from(_items);
     for (var i = 0; i < _items.length; i++) {
       _items[i] = _items[i].copyWith(isRead: true);
     }
+    _error = null;
     notifyListeners();
-    await _save();
+    try {
+      await _repo.markAllAsRead(token);
+    } catch (e) {
+      _items
+        ..clear()
+        ..addAll(previous);
+      _error = _message(e);
+      notifyListeners();
+    }
   }
 
   Future<void> remove(String id) async {
-    final countBefore = _items.length;
-    _items.removeWhere((item) => item.id == id);
-    if (_items.length == countBefore) return;
+    final token = _auth.token;
+    if (token == null) return;
+    final index = _items.indexWhere((item) => item.id == id);
+    if (index == -1) return;
+    final removed = _items.removeAt(index);
+    _error = null;
     notifyListeners();
-    await _save();
-  }
-
-  Future<void> _save() {
-    return _prefs.setStringList(
-      _itemsKey,
-      _items.map((item) => jsonEncode(item.toJson())).toList(),
-    );
-  }
-
-  static List<AppNotification> _load(SharedPreferences prefs) {
-    final raw = prefs.getStringList(_itemsKey) ?? const <String>[];
-    final items = <AppNotification>[];
-
-    for (final entry in raw) {
-      try {
-        final decoded = jsonDecode(entry);
-        if (decoded is Map<String, dynamic>) {
-          items.add(AppNotification.fromJson(decoded));
-        }
-      } catch (_) {}
+    try {
+      await _repo.delete(token, id);
+    } catch (e) {
+      _items.insert(index, removed);
+      _error = _message(e);
+      notifyListeners();
     }
-
-    items.sort((a, b) => b.createdAt.compareTo(a.createdAt));
-    return items;
   }
+
+  static String _message(Object error) =>
+      error.toString().replaceFirst('Exception: ', '');
 }

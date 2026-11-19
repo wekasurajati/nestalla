@@ -16,6 +16,7 @@ import 'features/review/review_repository.dart';
 import 'providers/auth_provider.dart';
 import 'providers/address_provider.dart';
 import 'repositories/auth_repository.dart';
+import 'repositories/notification_repository.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -33,7 +34,7 @@ Future<void> main() async {
         Provider<CheckoutRepository>(
           create: (ctx) => DummyCheckoutRepository(ctx.read<BookRepository>()),
         ),
-        ChangeNotifierProvider(create: (_) => NotificationProvider(prefs)),
+        ChangeNotifierProvider(create: (ctx) => NotificationProvider(ctx.read<AuthProvider>(), ApiNotificationRepository())),
         ChangeNotifierProvider(create: (_) => AddressProvider()),
         Provider<OrderRepository>(create: (_) => const DummyOrderRepository()),
         Provider<ReviewRepository>(
