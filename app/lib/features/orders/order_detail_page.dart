@@ -3,7 +3,6 @@ import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
 import '../../core/theme/app_colors.dart';
-import '../../models/book.dart';
 import '../../repositories/book_repository.dart';
 import '../checkout/checkout_models.dart';
 import '../checkout/widgets/order_summary_card.dart';
@@ -22,7 +21,7 @@ class OrderDetailPage extends StatefulWidget {
 }
 
 class _OrderDetailPageState extends State<OrderDetailPage> {
-  late Future<(Order, Book)?> _future;
+  late Future<(Order, List<CheckoutItem>)?> _future;
   bool _busy = false;
 
   @override
@@ -31,7 +30,7 @@ class _OrderDetailPageState extends State<OrderDetailPage> {
     _future = _load();
   }
 
-  Future<(Order, Book)?> _load() async {
+  Future<(Order, List<CheckoutItem>)?> _load() async {
     final orderRepository = context.read<OrderRepository>();
     final bookRepository = context.read<BookRepository>();
     final id = widget.orderId;
@@ -39,10 +38,18 @@ class _OrderDetailPageState extends State<OrderDetailPage> {
     final order = await orderRepository.getOrderById(id);
     if (order == null) return null;
     final books = await bookRepository.getBooks();
-    for (final book in books) {
-      if (book.id == order.bookId) return (order, book);
-    }
-    return null;
+    final booksById = {for (final b in books) b.id: b};
+    final items = <CheckoutItem>[
+      for (final item in order.items)
+        if (booksById[item.bookId] case final book?)
+          CheckoutItem(
+            book: book,
+            quantity: item.quantity,
+            unitPrice: item.price > 0 ? item.price : null,
+          ),
+    ];
+    if (items.isEmpty) return null;
+    return (order, items);
   }
 
   void _reload() {
@@ -135,7 +142,9 @@ class _OrderDetailPageState extends State<OrderDetailPage> {
   }
 
   Future<void> _writeReview(Order order) async {
-    await context.push('/orders/${order.id}/review');
+    await context.push(
+      '/orders/${order.id}/review?book=${order.reviewableBookId}',
+    );
     if (mounted) _reload();
   }
 
@@ -162,9 +171,13 @@ class _OrderDetailPageState extends State<OrderDetailPage> {
         child: const Text('Pesanan Diterima'),
       ),
       OrderStatus.completed => ElevatedButton(
-        onPressed: _busy ? null : () => _writeReview(order),
+        onPressed: (_busy || order.reviewableBookId == null)
+            ? null
+            : () => _writeReview(order),
         style: filled,
-        child: const Text('Beri Ulasan'),
+        child: Text(
+          order.reviewableBookId == null ? 'Ulasan Terkirim' : 'Beri Ulasan',
+        ),
       ),
       OrderStatus.canceled => null,
     };
@@ -180,7 +193,7 @@ class _OrderDetailPageState extends State<OrderDetailPage> {
 
   @override
   Widget build(BuildContext context) {
-    return FutureBuilder<(Order, Book)?>(
+    return FutureBuilder<(Order, List<CheckoutItem>)?>(
       future: _future,
       builder: (context, snapshot) {
         final loading =
@@ -211,10 +224,12 @@ class _OrderDetailPageState extends State<OrderDetailPage> {
     );
   }
 
-  Widget _buildContent(Order order, Book book) {
+  Widget _buildContent(Order order, List<CheckoutItem> items) {
     final data = CheckoutData(
-      items: [CheckoutItem(book: book, quantity: order.quantity)],
+      items: items,
       shippingCost: order.shippingCost,
+      tax: order.tax,
+      discountAmount: order.discountAmount,
     );
 
     return ListView(
