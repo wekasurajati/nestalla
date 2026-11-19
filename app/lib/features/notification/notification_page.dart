@@ -13,6 +13,9 @@ class NotificationPage extends StatelessWidget {
   Widget build(BuildContext context) {
     final provider = context.watch<NotificationProvider>();
     final items = provider.items;
+    final showLoader = provider.isLoading && items.isEmpty;
+    final showInitialError =
+        provider.error != null && items.isEmpty && !showLoader;
 
     return Scaffold(
       backgroundColor: AppColors.background,
@@ -27,37 +30,51 @@ class NotificationPage extends StatelessWidget {
         ],
       ),
       body: SafeArea(
-        child: items.isEmpty
-            ? const _EmptyNotifications()
-            : Column(
-                children: [
-                  if (provider.unreadCount > 0)
-                    Padding(
-                      padding: const EdgeInsets.fromLTRB(16, 4, 16, 0),
-                      child: Align(
-                        alignment: Alignment.centerRight,
-                        child: TextButton(
-                          onPressed: provider.markAllAsRead,
-                          child: const Text('Tandai semua dibaca'),
+        child: showLoader
+            ? const Center(child: CircularProgressIndicator())
+            : showInitialError
+                ? _ErrorNotifications(
+                    message: provider.error ?? '',
+                    onRetry: provider.refresh,
+                  )
+                : Column(
+                    children: [
+                      if (provider.error != null)
+                        _ErrorBanner(
+                          message: provider.error ?? '',
+                          onRetry: provider.refresh,
                         ),
-                      ),
-                    ),
-                  Expanded(
-                    child: ListView.separated(
-                      padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
-                      itemCount: items.length,
-                      separatorBuilder: (_, _) => const SizedBox(height: 10),
-                      itemBuilder: (context, index) {
-                        final item = items[index];
-                        return NotificationTile(
-                          notification: item,
-                          onTap: () => provider.markAsRead(item.id),
-                        );
-                      },
-                    ),
+                      if (items.isEmpty)
+                        const Expanded(child: _EmptyNotifications())
+                      else ...[
+                        if (provider.unreadCount > 0)
+                          Padding(
+                            padding: const EdgeInsets.fromLTRB(16, 4, 16, 0),
+                            child: Align(
+                              alignment: Alignment.centerRight,
+                              child: TextButton(
+                                onPressed: provider.markAllAsRead,
+                                child: const Text('Tandai semua dibaca'),
+                              ),
+                            ),
+                          ),
+                        Expanded(
+                          child: ListView.separated(
+                            padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
+                            itemCount: items.length,
+                            separatorBuilder: (_, _) => const SizedBox(height: 10),
+                            itemBuilder: (context, index) {
+                              final item = items[index];
+                              return NotificationTile(
+                                notification: item,
+                                onTap: () => provider.markAsRead(item.id),
+                              );
+                            },
+                          ),
+                        ),
+                      ],
+                    ],
                   ),
-                ],
-              ),
       ),
     );
   }
@@ -100,6 +117,84 @@ class _EmptyNotifications extends StatelessWidget {
             ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+class _ErrorNotifications extends StatelessWidget {
+  const _ErrorNotifications({required this.message, required this.onRetry});
+
+  final String message;
+  final VoidCallback onRetry;
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              Icons.cloud_off_outlined,
+              size: 56,
+              color: AppColors.lightBlue,
+            ),
+            const SizedBox(height: 16),
+            const Text(
+              'Gagal memuat notifikasi',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+                color: AppColors.dark,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              message,
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontSize: 13,
+                color: AppColors.dark.withValues(alpha: 0.7),
+              ),
+            ),
+            const SizedBox(height: 16),
+            ElevatedButton(
+              onPressed: onRetry,
+              child: const Text('Coba lagi'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _ErrorBanner extends StatelessWidget {
+  const _ErrorBanner({required this.message, required this.onRetry});
+
+  final String message;
+  final VoidCallback onRetry;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+      child: Row(
+        children: [
+          Expanded(
+            child: Text(
+              message,
+              style: TextStyle(
+                fontSize: 12,
+                color: Theme.of(context).colorScheme.error,
+              ),
+            ),
+          ),
+          TextButton(onPressed: onRetry, child: const Text('Coba lagi')),
+        ],
       ),
     );
   }
