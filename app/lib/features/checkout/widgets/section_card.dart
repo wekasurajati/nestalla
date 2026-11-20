@@ -5,9 +5,15 @@ import '../../../core/theme/app_radius.dart';
 
 class SectionCard extends StatelessWidget {
   final String title;
+  final Widget? titleWidget;
   final Widget child;
 
-  const SectionCard({super.key, required this.title, required this.child});
+  const SectionCard({
+    super.key,
+    required this.title,
+    this.titleWidget,
+    required this.child,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -22,14 +28,15 @@ class SectionCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            title,
-            style: const TextStyle(
-              fontSize: 20,
-              fontWeight: FontWeight.w600,
-              color: AppColors.dark,
-            ),
-          ),
+          titleWidget ??
+              Text(
+                title,
+                style: const TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w600,
+                  color: AppColors.dark,
+                ),
+              ),
           const SizedBox(height: 12),
           child,
         ],

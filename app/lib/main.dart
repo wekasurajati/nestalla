@@ -11,7 +11,7 @@ import 'repositories/book_repository.dart';
 import 'repositories/api_book_repository.dart';
 import 'features/book_detail/book_detail_provider.dart';
 import 'features/checkout/checkout_repository.dart';
-import 'features/orders/order_repository.dart';
+import 'repositories/order_repository.dart';
 import 'features/review/review_repository.dart';
 
 import 'providers/auth_provider.dart';
@@ -39,11 +39,11 @@ Future<void> main() async {
           create: (ctx) => CartProvider(prefs, ctx.read<AuthProvider>()),
         ),
         Provider<CheckoutRepository>(
-          create: (ctx) => DummyCheckoutRepository(ctx.read<BookRepository>()),
+          create: (ctx) => ApiCheckoutRepository(ctx.read<BookRepository>()),
         ),
         ChangeNotifierProvider(create: (_) => NotificationProvider(prefs)),
         ChangeNotifierProvider(create: (_) => AddressProvider()),
-        Provider<OrderRepository>(create: (_) => const DummyOrderRepository()),
+        Provider<OrderRepository>(create: (_) => ApiOrderRepository()),
         Provider<ReviewRepository>(
           create: (_) => const DummyReviewRepository(),
         ),
