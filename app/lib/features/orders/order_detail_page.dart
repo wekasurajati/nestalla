@@ -3,12 +3,14 @@ import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
 import '../../core/theme/app_colors.dart';
-import '../../repositories/book_repository.dart';
-import '../checkout/checkout_models.dart';
-import '../checkout/widgets/order_summary_card.dart';
+import '../../core/theme/app_radius.dart';
+import '../../core/utils/currency.dart';
+import '../../providers/auth_provider.dart';
+import '../../repositories/order_repository.dart' show OrderRepository;
+import '../checkout/payment_webview_page.dart';
 import '../checkout/widgets/section_card.dart';
+import 'api_order_repository.dart';
 import 'order.dart';
-import 'order_repository.dart';
 import 'widgets/status_tracker.dart';
 
 class OrderDetailPage extends StatefulWidget {
@@ -21,40 +23,22 @@ class OrderDetailPage extends StatefulWidget {
 }
 
 class _OrderDetailPageState extends State<OrderDetailPage> {
-  late Future<(Order, List<CheckoutItem>)?> _future;
+  late Future<Order?> _orderFuture;
   bool _busy = false;
 
   @override
   void initState() {
     super.initState();
-    _future = _load();
+    _reload();
   }
 
-  Future<(Order, List<CheckoutItem>)?> _load() async {
-    final orderRepository = context.read<OrderRepository>();
-    final bookRepository = context.read<BookRepository>();
-    final id = widget.orderId;
-    if (id == null) return null;
-    final order = await orderRepository.getOrderById(id);
-    if (order == null) return null;
-    final books = await bookRepository.getBooks();
-    final booksById = {for (final b in books) b.id: b};
-    final items = <CheckoutItem>[
-      for (final item in order.items)
-        if (booksById[item.bookId] case final book?)
-          CheckoutItem(
-            book: book,
-            quantity: item.quantity,
-            unitPrice: item.price > 0 ? item.price : null,
-          ),
-    ];
-    if (items.isEmpty) return null;
-    return (order, items);
-  }
-
-  void _reload() {
+  Future<void> _reload() async {
+    final token = context.read<AuthProvider>().token;
+    if (token == null) return;
     setState(() {
-      _future = _load();
+      _orderFuture = context
+          .read<OrderRepository>()
+          .getOrderById(token: token, id: widget.orderId!);
     });
   }
 
@@ -64,6 +48,17 @@ class _OrderDetailPageState extends State<OrderDetailPage> {
     } else {
       context.go('/orders');
     }
+  }
+
+  Future<void> _openPaymentInstructions(Order order) async {
+    if (order.snapRedirectUrl == null || !mounted) return;
+    await Navigator.of(context).push<bool>(
+      MaterialPageRoute(
+        builder: (context) => PaymentWebViewPage(
+          redirectUrl: order.snapRedirectUrl!,
+        ),
+      ),
+    );
   }
 
   Future<bool> _confirm({
@@ -113,32 +108,36 @@ class _OrderDetailPageState extends State<OrderDetailPage> {
 
   Future<void> _cancelOrder(Order order) async {
     final repository = context.read<OrderRepository>();
-    final ok = await _confirm(
-      title: 'Batalkan pesanan?',
-      message: 'Pesanan yang dibatalkan tidak dapat dikembalikan.',
-      cancelLabel: 'Tidak',
-      okLabel: 'Ya, batalkan',
-    );
-    if (!ok) return;
-    await _run(
-      () => repository.cancelOrder(order.id),
-      'Pesanan berhasil dibatalkan',
-    );
+    if (repository case ApiOrderRepository apiRepo) {
+      final ok = await _confirm(
+        title: 'Batalkan pesanan?',
+        message: 'Pesanan yang dibatalkan tidak dapat dikembalikan.',
+        cancelLabel: 'Tidak',
+        okLabel: 'Ya, batalkan',
+      );
+      if (!ok) return;
+      await _run(
+        () => apiRepo.cancelOrder(order.id),
+        'Pesanan berhasil dibatalkan',
+      );
+    }
   }
 
   Future<void> _confirmReceived(Order order) async {
     final repository = context.read<OrderRepository>();
-    final ok = await _confirm(
-      title: 'Pesanan sudah diterima?',
-      message: 'Pastikan buku sudah kamu terima dengan baik.',
-      cancelLabel: 'Belum',
-      okLabel: 'Sudah diterima',
-    );
-    if (!ok) return;
-    await _run(
-      () => repository.confirmReceived(order.id),
-      'Terima kasih! Pesanan selesai',
-    );
+    if (repository case ApiOrderRepository apiRepo) {
+      final ok = await _confirm(
+        title: 'Pesanan sudah diterima?',
+        message: 'Pastikan buku sudah kamu terima dengan baik.',
+        cancelLabel: 'Belum',
+        okLabel: 'Sudah diterima',
+      );
+      if (!ok) return;
+      await _run(
+        () => apiRepo.confirmReceived(order.id),
+        'Terima kasih! Pesanan selesai',
+      );
+    }
   }
 
   Future<void> _writeReview(Order order) async {
@@ -180,6 +179,7 @@ class _OrderDetailPageState extends State<OrderDetailPage> {
         ),
       ),
       OrderStatus.canceled => null,
+      OrderStatus.pending => null,
     };
     if (button == null) return null;
 
@@ -193,12 +193,17 @@ class _OrderDetailPageState extends State<OrderDetailPage> {
 
   @override
   Widget build(BuildContext context) {
-    return FutureBuilder<(Order, List<CheckoutItem>)?>(
-      future: _future,
+    return FutureBuilder<Order?>(
+      future: _orderFuture,
       builder: (context, snapshot) {
-        final loading =
-            snapshot.connectionState == ConnectionState.waiting && !_busy;
-        final target = snapshot.data;
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Center(child: CircularProgressIndicator());
+        }
+        if (snapshot.hasError || snapshot.data == null) {
+          return const Center(child: Text('Pesanan tidak ditemukan.'));
+        }
+
+        final order = snapshot.data!;
 
         return Scaffold(
           appBar: AppBar(
@@ -206,83 +211,165 @@ class _OrderDetailPageState extends State<OrderDetailPage> {
             leadingWidth: 68,
             leading: Padding(
               padding: const EdgeInsets.only(left: 16),
-              child: Center(child: _BackCircle(onPressed: _back)),
+              child: Center(
+                child: _BackCircle(onPressed: _back),
+              ),
             ),
             title: const Text(
               'Detail Pesanan',
               style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
             ),
           ),
-          body: loading
-              ? const Center(child: CircularProgressIndicator())
-              : (snapshot.hasError || target == null)
-              ? const Center(child: Text('Pesanan tidak ditemukan.'))
-              : _buildContent(target.$1, target.$2),
-          bottomNavigationBar: target == null ? null : _bottomBar(target.$1),
+          body: ListView(
+            padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
+            children: [
+              SectionCard(
+                title: 'Status Pesanan',
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _InfoRow(
+                      label: 'No. pesanan',
+                      value: order.orderDisplayNumber,
+                    ),
+                    const SizedBox(height: 4),
+                    _InfoRow(
+                      label: 'Tanggal pemesanan',
+                      value: formatOrderDate(order.orderDate),
+                    ),
+                    const SizedBox(height: 4),
+                    _InfoRow(
+                      label: 'Status',
+                      value: order.status.label,
+                      valueColor: order.status.color,
+                      bold: true,
+                    ),
+                    const SizedBox(height: 16),
+                    StatusTracker(status: order.status),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 12),
+              SectionCard(
+                title: 'Item Pesanan',
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    ...order.items.map(
+                      (item) => _ItemRow(
+                        title: item.title,
+                        quantity: item.quantity,
+                        price: item.price,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 12),
+              SectionCard(
+                title: 'Ringkasan Biaya',
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _AmountRow(
+                      label: 'Subtotal',
+                      value: order.totalAmount - order.shippingCost,
+                    ),
+                    if (order.shippingCost > 0) ...[
+                      const SizedBox(height: 4),
+                      _AmountRow(
+                        label: 'Biaya Pengiriman',
+                        value: order.shippingCost,
+                      ),
+                    ],
+                    const SizedBox(height: 8),
+                    _AmountRow(
+                      label: 'Total',
+                      value: order.totalAmount,
+                      bold: true,
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 12),
+              SectionCard(
+                title: 'Informasi Pengiriman',
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _InfoRow(
+                      label: 'Nama penerima',
+                      value: order.recipientName,
+                    ),
+                    const SizedBox(height: 4),
+                    _InfoRow(
+                      label: 'Nomor telepon',
+                      value: order.phone,
+                    ),
+                    const SizedBox(height: 8),
+                    const Text(
+                      'Alamat',
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: AppColors.backCircle,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      order.address,
+                      style: const TextStyle(
+                        fontSize: 13,
+                        color: AppColors.dark,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 12),
+              if (order.canShowPaymentInstructions) ...[
+                SectionCard(
+                  title: 'Pembayaran',
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Metode pembayaran: ${order.paymentMethodLabel}',
+                        style: TextStyle(
+                          fontSize: 13,
+                          color: AppColors.dark,
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      SizedBox(
+                        width: double.infinity,
+                        height: 44,
+                        child: ElevatedButton(
+                          onPressed:
+                              _busy ? null : () => _openPaymentInstructions(order),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: AppColors.navy,
+                            foregroundColor: Colors.white,
+                            elevation: 0,
+                            shape: AppRadius.shape,
+                          ),
+                          child: const Text(
+                            'Lihat Instruksi Pembayaran',
+                            style: TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ],
+          ),
+          bottomNavigationBar: _bottomBar(order),
         );
       },
-    );
-  }
-
-  Widget _buildContent(Order order, List<CheckoutItem> items) {
-    final data = CheckoutData(
-      items: items,
-      shippingCost: order.shippingCost,
-      tax: order.tax,
-      discountAmount: order.discountAmount,
-    );
-
-    return ListView(
-      padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
-      children: [
-        SectionCard(
-          title: 'Status Pesanan',
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              _InfoRow(label: 'No. pesanan', value: order.orderNumber),
-              const SizedBox(height: 4),
-              _InfoRow(
-                label: 'Tanggal pemesanan',
-                value: formatOrderDate(order.orderDate),
-              ),
-              const SizedBox(height: 4),
-              _InfoRow(
-                label: 'Status',
-                value: order.status.label,
-                valueColor: order.status.color,
-                bold: true,
-              ),
-              const SizedBox(height: 16),
-              StatusTracker(status: order.status),
-            ],
-          ),
-        ),
-        const SizedBox(height: 12),
-        OrderSummaryCard(data: data),
-        const SizedBox(height: 12),
-        SectionCard(
-          title: 'Informasi Pengiriman',
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              _InfoRow(label: 'Nama penerima', value: order.recipientName),
-              const SizedBox(height: 4),
-              _InfoRow(label: 'Nomor telepon', value: order.phone),
-              const SizedBox(height: 8),
-              const Text(
-                'Alamat',
-                style: TextStyle(fontSize: 12, color: AppColors.backCircle),
-              ),
-              const SizedBox(height: 2),
-              Text(
-                order.address,
-                style: const TextStyle(fontSize: 13, color: AppColors.dark),
-              ),
-            ],
-          ),
-        ),
-      ],
     );
   }
 }
@@ -327,6 +414,93 @@ class _InfoRow extends StatelessWidget {
   }
 }
 
+class _AmountRow extends StatelessWidget {
+  final String label;
+  final int value;
+  final bool bold;
+
+  const _AmountRow({
+    required this.label,
+    required this.value,
+    this.bold = false,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        Text(
+          label,
+          style: TextStyle(
+            fontSize: bold ? 13 : 12,
+            fontWeight: bold ? FontWeight.bold : FontWeight.normal,
+            color: bold ? AppColors.dark : AppColors.backCircle,
+          ),
+        ),
+        Text(
+          formatRupiah(value),
+          style: TextStyle(
+            fontSize: bold ? 14 : 12,
+            fontWeight: bold ? FontWeight.bold : FontWeight.w600,
+            color: bold ? AppColors.dark : AppColors.backCircle,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _ItemRow extends StatelessWidget {
+  final String title;
+  final int quantity;
+  final int price;
+
+  const _ItemRow({
+    required this.title,
+    required this.quantity,
+    required this.price,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  title,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.dark,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  'Qty ${quantity}  •  ${formatRupiah(price * quantity)}',
+                  style: const TextStyle(
+                    fontSize: 11,
+                    color: AppColors.backCircle,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 class _BackCircle extends StatelessWidget {
   final VoidCallback onPressed;
 
@@ -343,7 +517,11 @@ class _BackCircle extends StatelessWidget {
         child: const SizedBox(
           width: 40,
           height: 40,
-          child: Icon(Icons.chevron_left, size: 24, color: AppColors.backCircle),
+          child: Icon(
+            Icons.chevron_left,
+            size: 24,
+            color: AppColors.backCircle,
+          ),
         ),
       ),
     );

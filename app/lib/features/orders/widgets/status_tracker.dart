@@ -3,14 +3,14 @@ import 'package:flutter/material.dart';
 import '../../../core/theme/app_colors.dart';
 import '../order.dart';
 
-/// Langkah status: Dikemas -> Dikirim -> Selesai.
-/// Untuk pesanan Dibatalkan, tampil banner merah.
+/// Langkah status: Belum Dibayar -> Dikemas -> Dikirim -> Selesai -> Dibatalkan.
 class StatusTracker extends StatelessWidget {
   final OrderStatus status;
 
   const StatusTracker({super.key, required this.status});
 
   static const _steps = [
+    OrderStatus.pending,
     OrderStatus.packed,
     OrderStatus.shipped,
     OrderStatus.completed,
@@ -94,8 +94,10 @@ class _Step extends StatelessWidget {
               ),
             ),
             child: Icon(
-              done || (active && index == 2) ? Icons.check : Icons.circle,
-              size: done || (active && index == 2) ? 16 : 8,
+              done || (active && index == 3)
+                  ? Icons.check
+                  : Icons.circle,
+              size: done || (active && index == 3) ? 16 : 8,
               color: reached ? AppColors.background : AppColors.grey,
             ),
           ),

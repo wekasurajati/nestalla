@@ -2,10 +2,11 @@ import 'package:flutter/material.dart';
 
 import '../../core/theme/app_colors.dart';
 
-enum OrderStatus { packed, shipped, completed, canceled }
+enum OrderStatus { pending, packed, shipped, completed, canceled }
 
 extension OrderStatusStyle on OrderStatus {
   String get label => switch (this) {
+    OrderStatus.pending => 'Belum Dibayar',
     OrderStatus.packed => 'Dikemas',
     OrderStatus.shipped => 'Dikirim',
     OrderStatus.completed => 'Selesai',
@@ -13,6 +14,7 @@ extension OrderStatusStyle on OrderStatus {
   };
 
   Color get color => switch (this) {
+    OrderStatus.pending => AppColors.backCircle,
     OrderStatus.packed => AppColors.blue,
     OrderStatus.shipped => Colors.orange,
     OrderStatus.completed => Colors.green,
@@ -41,16 +43,27 @@ OrderStatus orderStatusFromApi(String? status) => switch (status) {
   _ => OrderStatus.packed,
 };
 
+int? _toIntOpt(dynamic v) {
+  if (v == null) return null;
+  if (v is num) return v.toInt();
+  return num.tryParse(v.toString())?.toInt();
+}
+
+/// Satu item dalam pesanan.
 class OrderItem {
   final int bookId;
   final int quantity;
   final int price;
+  final String title;
+  final String image;
   final bool reviewed;
 
   const OrderItem({
     required this.bookId,
     this.quantity = 1,
     this.price = 0,
+    this.title = '',
+    this.image = '',
     this.reviewed = false,
   });
 
@@ -58,38 +71,52 @@ class OrderItem {
     bookId: _toInt(json['book_id']),
     quantity: _toInt(json['quantity'], 1),
     price: _toInt(json['price']),
+    title: json['title'] as String? ?? '',
+    image: json['image'] as String? ?? '',
     reviewed: _toInt(json['reviewed']) > 0,
   );
 }
 
-/// Model order. Sengaja ditaruh di folder fitur (bukan models/) supaya tidak
-/// mengubah folder bersama. Nilai default untuk ongkir dan data penerima
-/// hanya untuk data dummy; data asli datang dari API (lihat fromJson).
+/// Model order. Data berasal dari REST API (orders.php).
 class Order {
   final int id;
   final String? number;
+  final String? merchantOrderId;
+  final String paymentStatus; // pending, paid, failed, expired, cancelled
+  final int totalAmount;
+  final String? snapToken;
+  final String? snapRedirectUrl;
+  final int? promoId;
+  final String? paymentMethod; // bank, ewallet, cod, credit, midtrans
   final DateTime orderDate;
   final OrderStatus status;
-  final List<OrderItem> items;
   final int shippingCost;
   final int tax;
   final int discountAmount;
   final String recipientName;
   final String phone;
   final String address;
+  final List<OrderItem> items;
 
   const Order({
     required this.id,
+    this.number,
+    this.merchantOrderId,
+    required this.paymentStatus,
+    required this.totalAmount,
+    this.snapToken,
+    this.snapRedirectUrl,
+    this.promoId,
+    this.paymentMethod,
     required this.orderDate,
     required this.status,
     required this.items,
-    this.number,
-    this.shippingCost = 4680,
+    this.shippingCost = 0,
     this.tax = 0,
     this.discountAmount = 0,
-    this.recipientName = 'Budi Santoso',
-    this.phone = '081234567890',
-    this.address = 'Jl. Merdeka No. 10, Kota Contoh, Jawa Timur 60000',
+    this.recipientName = '',
+    this.phone = '',
+    this.address = '',
   });
 
   factory Order.fromJson(Map<String, dynamic> json) {
@@ -101,23 +128,50 @@ class Order {
       json['postal_code'],
     ].map((e) => e?.toString().trim() ?? '').where((e) => e.isNotEmpty).join(', ');
 
+    final itemsList = (json['items'] as List<dynamic>? ?? [])
+        .map((e) => OrderItem.fromJson(e as Map<String, dynamic>))
+        .toList();
+
     return Order(
       id: _toInt(json['order_id']),
       number: json['order_number'] as String?,
-      orderDate:
-          DateTime.tryParse(json['created_at']?.toString() ?? '') ??
-          DateTime.now(),
-      status: orderStatusFromApi(json['status'] as String?),
-      items: ((json['items'] as List<dynamic>?) ?? const [])
-          .map((e) => OrderItem.fromJson(e as Map<String, dynamic>))
-          .toList(),
+      merchantOrderId: json['merchant_order_id'] as String?,
+      paymentStatus: json['payment_status'] as String? ?? 'pending',
+      totalAmount: _toInt(json['total_amount']),
+      snapToken: json['snap_token'] as String?,
+      snapRedirectUrl: json['snap_redirect_url'] as String?,
+      promoId: _toIntOpt(json['promo_id']),
+      paymentMethod: json['payment_method'] as String?,
+      orderDate: _parseDateTime(json['created_at']),
+      status: _mapPaymentStatusToOrderStatus(json['payment_status'] as String?),
       shippingCost: _toInt(json['shipping_cost']),
       tax: _toInt(json['tax']),
       discountAmount: _toInt(json['discount_amount']),
-      recipientName: json['recipient_name']?.toString() ?? '-',
-      phone: json['phone']?.toString() ?? '-',
-      address: address.isEmpty ? '-' : address,
+      recipientName: json['recipient_name']?.toString() ?? '',
+      phone: json['phone']?.toString() ?? '',
+      address: address.isEmpty ? '' : address,
+      items: itemsList,
     );
+  }
+
+  static DateTime _parseDateTime(dynamic value) {
+    if (value == null) return DateTime.now();
+    if (value is DateTime) return value;
+    return DateTime.tryParse(value.toString()) ?? DateTime.now();
+  }
+
+  static OrderStatus _mapPaymentStatusToOrderStatus(String? status) {
+    switch (status) {
+      case 'paid':
+        return OrderStatus.packed;
+      case 'failed':
+      case 'expired':
+      case 'cancelled':
+        return OrderStatus.canceled;
+      case 'pending':
+      default:
+        return OrderStatus.pending;
+    }
   }
 
   /// Buku pertama di pesanan (dipakai untuk kartu di daftar pesanan).
@@ -130,17 +184,52 @@ class Order {
   /// Nomor pesanan untuk ditampilkan, contoh: LB-2026-0012.
   String get orderNumber => number ?? 'NST-${id.toString().padLeft(5, '0')}';
 
-  Order copyWith({OrderStatus? status}) => Order(
+  /// Nomor pesanan untuk ditampilkan (alias kompatibel versi lama).
+  String get orderDisplayNumber => orderNumber;
+
+  /// Apakah pesanan masih menunggu pembayaran (bisa dibuka ulang instruksi pembayaran).
+  bool get canShowPaymentInstructions =>
+      status == OrderStatus.pending && snapRedirectUrl != null;
+
+  /// Label metode pembayaran untuk ditampilkan.
+  String get paymentMethodLabel {
+    switch (paymentMethod) {
+      case 'bank':
+        return 'Transfer Bank';
+      case 'ewallet':
+        return 'E-Wallet';
+      case 'cod':
+        return 'COD (Bayar di Tempat)';
+      case 'credit':
+        return 'Kartu Kredit';
+      case 'midtrans':
+        return 'Midtrans';
+      default:
+        return paymentMethod ?? '-';
+    }
+  }
+
+  Order copyWith({
+    OrderStatus? status,
+    String? paymentMethod,
+  }) => Order(
     id: id,
     number: number,
+    merchantOrderId: merchantOrderId,
+    paymentStatus: paymentStatus,
+    totalAmount: totalAmount,
+    snapToken: snapToken,
+    snapRedirectUrl: snapRedirectUrl,
+    promoId: promoId,
+    paymentMethod: paymentMethod ?? this.paymentMethod,
     orderDate: orderDate,
     status: status ?? this.status,
-    items: items,
     shippingCost: shippingCost,
     tax: tax,
     discountAmount: discountAmount,
     recipientName: recipientName,
     phone: phone,
     address: address,
+    items: items,
   );
 }

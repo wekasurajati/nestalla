@@ -2,8 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../../core/theme/app_colors.dart';
-import '../../models/book.dart';
-import '../../repositories/book_repository.dart';
+import '../../providers/auth_provider.dart';
+import '../../repositories/order_repository.dart';
 import 'order.dart';
 import 'order_repository.dart';
 import 'widgets/order_card.dart';
@@ -16,26 +16,20 @@ class MyOrderPage extends StatefulWidget {
 }
 
 class _MyOrderPageState extends State<MyOrderPage> {
-  late Future<(List<Order>, List<Book>)> _dataFuture;
+  late Future<List<Order>> _ordersFuture;
   OrderStatus? _selectedStatus; // null = All
 
   @override
   void initState() {
     super.initState();
-    _dataFuture = _load();
+    _reload();
   }
 
-  Future<(List<Order>, List<Book>)> _load() async {
-    final orderRepository = context.read<OrderRepository>();
-    final bookRepository = context.read<BookRepository>();
-    final orders = await orderRepository.getOrders();
-    final books = await bookRepository.getBooks();
-    return (orders, books);
-  }
-
-  void _reload() {
+  Future<void> _reload() async {
+    final token = context.read<AuthProvider>().token;
+    if (token == null) return;
     setState(() {
-      _dataFuture = _load();
+      _ordersFuture = context.read<OrderRepository>().getOrders(token: token);
     });
   }
 
@@ -48,8 +42,8 @@ class _MyOrderPageState extends State<MyOrderPage> {
           style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
         ),
       ),
-      body: FutureBuilder<(List<Order>, List<Book>)>(
-        future: _dataFuture,
+      body: FutureBuilder<List<Order>>(
+        future: _ordersFuture,
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
             return const Center(child: CircularProgressIndicator());
@@ -62,13 +56,10 @@ class _MyOrderPageState extends State<MyOrderPage> {
           );
           }
 
-          final (orders, books) = snapshot.data!;
-          final booksById = {for (final book in books) book.id: book};
+          final orders = snapshot.data!;
           final visibleOrders = orders
               .where(
-                (o) =>
-                    booksById.containsKey(o.bookId) &&
-                    (_selectedStatus == null || o.status == _selectedStatus),
+                (o) => _selectedStatus == null || o.status == _selectedStatus,
               )
               .toList();
 
@@ -94,7 +85,6 @@ class _MyOrderPageState extends State<MyOrderPage> {
                           final order = visibleOrders[index];
                           return OrderCard(
                             order: order,
-                            book: booksById[order.bookId]!,
                             onReturn: _reload,
                           );
                         },

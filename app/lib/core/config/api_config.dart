@@ -11,4 +11,6 @@ class ApiConfig {
 
   static String bookCoverUrl(String filename) =>
       '${baseUrl.replaceFirst(RegExp(r'/api$'), '')}/image/covers/$filename';
+
+  static const paymentFinishUrl = 'https://nestalla.app/payment/finish';
 }

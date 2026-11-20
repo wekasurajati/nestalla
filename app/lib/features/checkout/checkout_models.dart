@@ -33,18 +33,44 @@ class CheckoutData {
   int get total => subtotal - discountAmount + shippingCost + tax;
 }
 
-class ShippingInfo {
-  final String firstName;
-  final String lastName;
-  final String email;
-  final String phone;
-  final String address;
+class ShippingCarrier {
+  final int id;
+  final String name;
+  final int price;
 
-  const ShippingInfo({
-    required this.firstName,
-    required this.lastName,
-    required this.email,
-    required this.phone,
-    required this.address,
+  const ShippingCarrier({
+    required this.id,
+    required this.name,
+    required this.price,
   });
+
+  factory ShippingCarrier.fromJson(Map<String, dynamic> json) => ShippingCarrier(
+        id: (json['id'] as num?)?.toInt() ?? 0,
+        name: json['name'] as String? ?? '',
+        price: (json['price'] as num?)?.toInt() ?? 0,
+      );
+}
+
+class Voucher {
+  final String code;
+  final int discountAmount;
+  final String type;
+  final String? description;
+  final int? newShippingCost;
+
+  const Voucher({
+    required this.code,
+    required this.discountAmount,
+    required this.type,
+    this.description,
+    this.newShippingCost,
+  });
+
+  factory Voucher.fromJson(Map<String, dynamic> json) => Voucher(
+        code: json['code'] as String? ?? '',
+        discountAmount: (json['discount_amount'] as num?)?.toInt() ?? 0,
+        type: json['type'] as String? ?? '',
+        description: json['description'] as String?,
+        newShippingCost: (json['new_shipping_cost'] as num?)?.toInt(),
+      );
 }

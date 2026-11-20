@@ -1,4 +1,4 @@
-import 'package:flutter/foundation.dart';
+import 'package:flutter/widgets.dart';
 
 import '../../models/book.dart';
 import '../../repositories/book_repository.dart';
@@ -27,7 +27,11 @@ class BookDetailProvider extends ChangeNotifier {
     _isNotFound = false;
     _errorMessage = null;
     _book = null;
-    notifyListeners();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (version == _requestVersion) {
+        notifyListeners();
+      }
+    });
 
     try {
       final book = await _repository.getBookById(id);

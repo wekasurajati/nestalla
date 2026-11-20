@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_radius.dart';
 import '../../models/book.dart';
+import '../../providers/auth_provider.dart';
 import '../../repositories/book_repository.dart';
 import '../../widgets/book_cover.dart';
 import '../orders/order.dart';
@@ -43,17 +44,34 @@ class _ReviewPageState extends State<ReviewPage> {
     final bookRepository = context.read<BookRepository>();
     _reviewRepository = context.read<ReviewRepository>();
     _targetFuture = () async {
+      final token = context.read<AuthProvider>().token;
+      if (token == null) return null;
       final id = widget.orderId;
       if (id == null) return null;
-      final order = await orderRepository.getOrderById(id);
+      final order = await orderRepository.getOrderById(token: token, id: id);
       if (order == null || order.status != OrderStatus.completed) return null;
       final books = await bookRepository.getBooks();
-      final targetBookId = widget.bookId ?? order.reviewableBookId;
+
+      final targetBookId = widget.bookId ??
+          order.reviewableBookId ??
+          (order.items.isNotEmpty ? order.items.first.bookId : null);
       if (targetBookId == null) return null;
-      for (final book in books) {
-        if (book.id == targetBookId) return (order, book);
-      }
-      return null;
+
+      final book = books.firstWhere(
+        (b) => b.id == targetBookId,
+        orElse: () => Book(
+          id: targetBookId,
+          title: '',
+          author: '',
+          publisher: '',
+          description: '',
+          price: 0,
+          image: '',
+          category: '',
+          stock: 0,
+        ),
+      );
+      return (order, book);
     }();
     _controller.addListener(() => setState(() {}));
   }

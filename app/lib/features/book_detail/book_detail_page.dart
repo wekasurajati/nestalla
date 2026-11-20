@@ -13,6 +13,7 @@ import '../../widgets/back_button.dart';
 import '../../widgets/book_cover.dart';
 import '../../widgets/rating_label.dart';
 import 'book_detail_provider.dart';
+import 'widgets/buy_now_sheet.dart';
 import 'widgets/review_card.dart';
 
 class BookDetailPage extends StatefulWidget {
@@ -100,6 +101,26 @@ class _BookDetailPageState extends State<BookDetailPage> {
       );
   }
 
+  Future<void> _buyNow(Book book) async {
+    if (!context.read<AuthProvider>().isLoggedIn) {
+      context.push('/login');
+      return;
+    }
+    final qty = await showBuyNowSheet(context, book: book);
+    if (qty == null || !mounted) return;
+    final cart = context.read<CartProvider>();
+    if (cart.contains(book.id)) {
+      await cart.setQuantity(book.id, qty);
+    } else {
+      await cart.add(book.id);
+      if (qty > 1 && mounted) {
+        await cart.setQuantity(book.id, qty);
+      }
+    }
+    if (!mounted) return;
+    context.push('/checkout');
+  }
+
   @override
   Widget build(BuildContext context) {
     final wishlist = context.watch<WishlistProvider>();
@@ -135,6 +156,7 @@ class _BookDetailPageState extends State<BookDetailPage> {
         isWishlisted: wishlist.contains(book.id),
         onToggleWishlist: () => _toggleWishlist(book),
         onAddToCart: () => _addToCart(book),
+        onBuyNow: () => _buyNow(book),
         onBack: _goBack,
       );
     }
@@ -151,6 +173,7 @@ class _BookDetailContent extends StatelessWidget {
   final bool isWishlisted;
   final VoidCallback onToggleWishlist;
   final VoidCallback onAddToCart;
+  final VoidCallback onBuyNow;
   final VoidCallback onBack;
 
   const _BookDetailContent({
@@ -158,6 +181,7 @@ class _BookDetailContent extends StatelessWidget {
     required this.isWishlisted,
     required this.onToggleWishlist,
     required this.onAddToCart,
+    required this.onBuyNow,
     required this.onBack,
   });
 
@@ -205,7 +229,9 @@ class _BookDetailContent extends StatelessWidget {
                         onPressed: onToggleWishlist,
                       ),
                       const SizedBox(width: 12),
-                      Expanded(child: _AddToCartButton(onPressed: onAddToCart)),
+                      _CartIconButton(onPressed: onAddToCart),
+                      const SizedBox(width: 12),
+                      Expanded(child: _BuyNowButton(onPressed: onBuyNow)),
                     ],
                   ),
                   const SizedBox(height: 24),
@@ -348,10 +374,36 @@ class _WishlistButton extends StatelessWidget {
   }
 }
 
-class _AddToCartButton extends StatelessWidget {
+class _CartIconButton extends StatelessWidget {
   final VoidCallback onPressed;
 
-  const _AddToCartButton({required this.onPressed});
+  const _CartIconButton({required this.onPressed});
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      width: 52,
+      height: 52,
+      child: OutlinedButton(
+        onPressed: onPressed,
+        style: OutlinedButton.styleFrom(
+          padding: EdgeInsets.zero,
+          side: const BorderSide(color: AppColors.lightBlue),
+          shape: AppRadius.shape,
+        ),
+        child: const Icon(
+          Icons.shopping_cart_outlined,
+          color: AppColors.navy,
+        ),
+      ),
+    );
+  }
+}
+
+class _BuyNowButton extends StatelessWidget {
+  final VoidCallback onPressed;
+
+  const _BuyNowButton({required this.onPressed});
 
   @override
   Widget build(BuildContext context) {
@@ -364,7 +416,7 @@ class _AddToCartButton extends StatelessWidget {
         shape: AppRadius.shape,
         textStyle: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
       ),
-      child: const Text('Tambah ke keranjang'),
+      child: const Text('Beli Sekarang'),
     );
   }
 }
