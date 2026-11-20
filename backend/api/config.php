@@ -30,8 +30,71 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
     exit;
 }
 
+// Include environment reader
+require_once '../config/env.php';
+
 // Include database
 require_once '../config/database.php';
+
+// ========================================
+// PENGATURAN PEMBAYARAN MIDTRANS
+// ========================================
+define('PAYMENT_EXPIRY_MINUTES', 60);
+define('PAYMENT_FINISH_URL', 'https://nestalla.app/payment/finish');
+
+function midtransBaseUrls() {
+    $isProduction = (env('MIDTRANS_IS_PRODUCTION', 'false') === 'true');
+
+    if ($isProduction) {
+        return [
+            'snap' => 'https://app.midtrans.com/snap/v1/transactions',
+            'core' => 'https://api.midtrans.com',
+        ];
+    }
+
+    return [
+        'snap' => 'https://app.sandbox.midtrans.com/snap/v1/transactions',
+        'core' => 'https://api.sandbox.midtrans.com',
+    ];
+}
+
+function midtransRequest($method, $url, $body = null) {
+    $serverKey = env('MIDTRANS_SERVER_KEY', '');
+    $auth = base64_encode($serverKey . ':');
+
+    $ch = curl_init($url);
+    curl_setopt_array($ch, [
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_CONNECTTIMEOUT => 5,
+        CURLOPT_TIMEOUT => 8,
+        CURLOPT_CUSTOMREQUEST => $method,
+        CURLOPT_HTTPHEADER => [
+            'Authorization: Basic ' . $auth,
+            'Content-Type: application/json',
+            'Accept: application/json',
+        ],
+    ]);
+
+    if ($body !== null) {
+        curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($body));
+    }
+
+    $response = curl_exec($ch);
+    $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    $curlError = curl_error($ch);
+    curl_close($ch);
+
+    if ($response === false) {
+        throw new Exception('Midtrans cURL error: ' . $curlError);
+    }
+
+    $decoded = json_decode($response, true);
+    if ($decoded === null && json_last_error() !== JSON_ERROR_NONE) {
+        $decoded = ['raw' => $response];
+    }
+
+    return [$httpCode, $decoded];
+}
 
 // Helper functions
 function sendResponse($status, $message, $data = null) {
