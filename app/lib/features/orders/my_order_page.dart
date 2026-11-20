@@ -51,9 +51,9 @@ class _MyOrderPageState extends State<MyOrderPage> {
           if (snapshot.hasError || snapshot.data == null) {
             return const _MessageState(
               icon: Icons.error_outline,
-              title: 'Gagal memuat pesanan',
-              message: 'Silakan coba lagi.',
-            );
+             title: 'Gagal memuat pesanan',
+             message: 'Silakan coba lagi.',
+          );
           }
 
           final orders = snapshot.data!;

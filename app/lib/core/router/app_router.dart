@@ -146,7 +146,10 @@ final appRouter = GoRouter(
     GoRoute(
       path: '/orders/:id/review',
       builder: (_, s) =>
-          ReviewPage(orderId: int.tryParse(s.pathParameters['id'] ?? '')), // D
+          ReviewPage(
+            orderId: int.tryParse(s.pathParameters['id'] ?? ''),
+            bookId: int.tryParse(s.uri.queryParameters['book'] ?? ''),
+          ), // D
     ),
     GoRoute(
       path: '/profile/edit',

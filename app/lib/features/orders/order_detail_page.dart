@@ -6,9 +6,10 @@ import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_radius.dart';
 import '../../core/utils/currency.dart';
 import '../../providers/auth_provider.dart';
-import '../../repositories/order_repository.dart';
+import '../../repositories/order_repository.dart' show OrderRepository;
 import '../checkout/payment_webview_page.dart';
 import '../checkout/widgets/section_card.dart';
+import 'api_order_repository.dart';
 import 'order.dart';
 import 'widgets/status_tracker.dart';
 
@@ -58,7 +59,136 @@ class _OrderDetailPageState extends State<OrderDetailPage> {
         ),
       ),
     );
+  }
+
+  Future<bool> _confirm({
+    required String title,
+    required String message,
+    required String cancelLabel,
+    required String okLabel,
+  }) async {
+    final result = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text(title),
+        content: Text(message),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: Text(cancelLabel),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(true),
+            child: Text(okLabel),
+          ),
+        ],
+      ),
+    );
+    return result ?? false;
+  }
+
+  Future<void> _run(Future<void> Function() action, String successMessage) async {
+    setState(() => _busy = true);
+    try {
+      await action();
+      if (!mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(successMessage)));
+      _reload();
+    } catch (_) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Terjadi kesalahan. Coba lagi.')),
+      );
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  Future<void> _cancelOrder(Order order) async {
+    final repository = context.read<OrderRepository>();
+    if (repository case ApiOrderRepository apiRepo) {
+      final ok = await _confirm(
+        title: 'Batalkan pesanan?',
+        message: 'Pesanan yang dibatalkan tidak dapat dikembalikan.',
+        cancelLabel: 'Tidak',
+        okLabel: 'Ya, batalkan',
+      );
+      if (!ok) return;
+      await _run(
+        () => apiRepo.cancelOrder(order.id),
+        'Pesanan berhasil dibatalkan',
+      );
+    }
+  }
+
+  Future<void> _confirmReceived(Order order) async {
+    final repository = context.read<OrderRepository>();
+    if (repository case ApiOrderRepository apiRepo) {
+      final ok = await _confirm(
+        title: 'Pesanan sudah diterima?',
+        message: 'Pastikan buku sudah kamu terima dengan baik.',
+        cancelLabel: 'Belum',
+        okLabel: 'Sudah diterima',
+      );
+      if (!ok) return;
+      await _run(
+        () => apiRepo.confirmReceived(order.id),
+        'Terima kasih! Pesanan selesai',
+      );
+    }
+  }
+
+  Future<void> _writeReview(Order order) async {
+    await context.push(
+      '/orders/${order.id}/review?book=${order.reviewableBookId}',
+    );
     if (mounted) _reload();
+  }
+
+  Widget? _bottomBar(Order order) {
+    final ButtonStyle filled = ElevatedButton.styleFrom(
+      backgroundColor: AppColors.navy,
+      foregroundColor: AppColors.background,
+      minimumSize: const Size.fromHeight(52),
+    );
+
+    final Widget? button = switch (order.status) {
+      OrderStatus.packed => OutlinedButton(
+        onPressed: _busy ? null : () => _cancelOrder(order),
+        style: OutlinedButton.styleFrom(
+          foregroundColor: Colors.red,
+          side: const BorderSide(color: Colors.red),
+          minimumSize: const Size.fromHeight(52),
+        ),
+        child: const Text('Batalkan Pesanan'),
+      ),
+      OrderStatus.shipped => ElevatedButton(
+        onPressed: _busy ? null : () => _confirmReceived(order),
+        style: filled,
+        child: const Text('Pesanan Diterima'),
+      ),
+      OrderStatus.completed => ElevatedButton(
+        onPressed: (_busy || order.reviewableBookId == null)
+            ? null
+            : () => _writeReview(order),
+        style: filled,
+        child: Text(
+          order.reviewableBookId == null ? 'Ulasan Terkirim' : 'Beri Ulasan',
+        ),
+      ),
+      OrderStatus.canceled => null,
+      OrderStatus.pending => null,
+    };
+    if (button == null) return null;
+
+    return SafeArea(
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+        child: button,
+      ),
+    );
   }
 
   @override
@@ -237,6 +367,7 @@ class _OrderDetailPageState extends State<OrderDetailPage> {
               ],
             ],
           ),
+          bottomNavigationBar: _bottomBar(order),
         );
       },
     );

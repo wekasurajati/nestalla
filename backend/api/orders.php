@@ -185,6 +185,81 @@ if (isset($_POST['update_status'])) {
 }
 
 // ========================================
+// AKSI USER (API - pakai token)
+//   POST orders.php?action=cancel   body: {"order_id": 1}
+//   POST orders.php?action=confirm  body: {"order_id": 1}
+// ========================================
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_GET['action'])) {
+    $user_id = getAuthUserId();
+    if (!$user_id) {
+        sendError('Please login first', 401);
+    }
+
+    $action = $_GET['action'];
+    if (!in_array($action, ['cancel', 'confirm'], true)) {
+        sendError('Action tidak dikenal', 400);
+    }
+
+    $body = json_decode(file_get_contents('php://input'), true);
+    $order_id = intval($body['order_id'] ?? 0);
+    if ($order_id <= 0) {
+        sendError("Field 'order_id' wajib diisi");
+    }
+
+    try {
+        $conn->beginTransaction();
+
+        // Kunci baris order supaya tidak bentrok dengan perubahan lain
+        $stmt = $conn->prepare('SELECT status FROM orders WHERE order_id = :oid AND user_id = :uid FOR UPDATE');
+        $stmt->bindParam(':oid', $order_id);
+        $stmt->bindParam(':uid', $user_id);
+        $stmt->execute();
+        $order = $stmt->fetch(PDO::FETCH_ASSOC);
+
+        if (!$order) {
+            $conn->rollBack();
+            sendError('Order not found', 404);
+        }
+
+        if ($action === 'cancel') {
+            // Hanya pesanan "Dikemas" (pending/processing) yang boleh dibatalkan
+            if (!in_array($order['status'], ['pending', 'processing'], true)) {
+                $conn->rollBack();
+                sendError('Pesanan ini tidak dapat dibatalkan', 409);
+            }
+
+            $conn->prepare("UPDATE orders SET status = 'cancelled' WHERE order_id = :oid")
+                 ->execute([':oid' => $order_id]);
+
+            // Kembalikan stok buku
+            $conn->prepare('UPDATE books b
+                            JOIN order_items oi ON oi.book_id = b.book_id
+                            SET b.stock = b.stock + oi.quantity
+                            WHERE oi.order_id = :oid')
+                 ->execute([':oid' => $order_id]);
+
+            $conn->commit();
+            sendSuccess('Pesanan berhasil dibatalkan', ['status' => 'cancelled']);
+        }
+
+        // action === 'confirm': hanya pesanan "Dikirim"
+        if ($order['status'] !== 'shipped') {
+            $conn->rollBack();
+            sendError('Pesanan ini belum dikirim', 409);
+        }
+
+        $conn->prepare("UPDATE orders SET status = 'completed' WHERE order_id = :oid")
+             ->execute([':oid' => $order_id]);
+        $conn->commit();
+        sendSuccess('Pesanan selesai', ['status' => 'completed']);
+
+    } catch (Exception $e) {
+        if ($conn->inTransaction()) $conn->rollBack();
+        sendError('Gagal memperbarui pesanan: ' . $e->getMessage(), 500);
+    }
+}
+
+// ========================================
 // GET ORDERS BY USER (API - pakai token)
 // ========================================
 if ($_SERVER['REQUEST_METHOD'] === 'GET' && !isset($_GET['order_id']) && !isset($_GET['action'])) {
@@ -211,7 +286,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && !isset($_GET['order_id']) && !isset(
 
         // Get items for each order
         foreach ($orders as &$order) {
-            $query_items = "SELECT oi.*, b.image, b.title 
+            $query_items = "SELECT oi.*, b.image, b.title,
+                                  (SELECT COUNT(*) FROM testimonials t
+                                    WHERE t.order_id = oi.order_id AND t.book_id = oi.book_id) AS reviewed
                            FROM order_items oi 
                            JOIN books b ON oi.book_id = b.book_id 
                            WHERE oi.order_id = :order_id";
@@ -275,7 +352,9 @@ else if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['order_id']) && !is
         }
 
         // Get order items
-        $query_items = "SELECT oi.*, b.image, b.title 
+        $query_items = "SELECT oi.*, b.image, b.title,
+                              (SELECT COUNT(*) FROM testimonials t
+                                WHERE t.order_id = oi.order_id AND t.book_id = oi.book_id) AS reviewed
                        FROM order_items oi 
                        JOIN books b ON oi.book_id = b.book_id 
                        WHERE oi.order_id = :order_id";

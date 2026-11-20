@@ -118,24 +118,10 @@ class ApiOrderRepository implements OrderRepository {
 
     final data = json['data'] as Map<String, dynamic>;
     final ordersList = data['orders'] as List<dynamic>;
-    final booksMap = <int, Map<String, dynamic>>{};
-
-    // Build books map from items for quick lookup
-    for (final o in ordersList) {
-      final orderMap = o as Map<String, dynamic>;
-      final items = orderMap['items'] as List<dynamic>? ?? [];
-      for (final item in items) {
-        final itemMap = item as Map<String, dynamic>;
-        final bookId = (itemMap['book_id'] as num?)?.toInt();
-        if (bookId != null && !booksMap.containsKey(bookId)) {
-          booksMap[bookId] = itemMap;
-        }
-      }
-    }
 
     return ordersList.map((o) {
       final orderMap = o as Map<String, dynamic>;
-      return Order.fromJson(orderMap, booksMap);
+      return Order.fromJson(orderMap);
     }).toList();
   }
 
@@ -158,16 +144,7 @@ class ApiOrderRepository implements OrderRepository {
     }
 
     final data = json['data'] as Map<String, dynamic>;
-    final booksMap = <int, Map<String, dynamic>>{};
-    final items = data['items'] as List<dynamic>? ?? [];
-    for (final item in items) {
-      final itemMap = item as Map<String, dynamic>;
-      final bookId = (itemMap['book_id'] as num?)?.toInt();
-      if (bookId != null && !booksMap.containsKey(bookId)) {
-        booksMap[bookId] = itemMap;
-      }
-    }
 
-    return Order.fromJson(data, booksMap);
+    return Order.fromJson(data);
   }
 }

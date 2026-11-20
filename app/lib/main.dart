@@ -11,12 +11,15 @@ import 'repositories/book_repository.dart';
 import 'repositories/api_book_repository.dart';
 import 'features/book_detail/book_detail_provider.dart';
 import 'features/checkout/checkout_repository.dart';
-import 'repositories/order_repository.dart';
+import 'repositories/order_repository.dart' show OrderRepository;
 import 'features/review/review_repository.dart';
 
 import 'providers/auth_provider.dart';
 import 'providers/address_provider.dart';
 import 'repositories/auth_repository.dart';
+import 'repositories/notification_repository.dart';
+import 'features/orders/api_order_repository.dart';
+import 'features/review/api_review_repository.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -41,11 +44,16 @@ Future<void> main() async {
         Provider<CheckoutRepository>(
           create: (ctx) => ApiCheckoutRepository(ctx.read<BookRepository>()),
         ),
-        ChangeNotifierProvider(create: (_) => NotificationProvider(prefs)),
+        ChangeNotifierProvider(
+          create: (ctx) =>
+              NotificationProvider(ctx.read<AuthProvider>(), ApiNotificationRepository()),
+        ),
         ChangeNotifierProvider(create: (_) => AddressProvider()),
-        Provider<OrderRepository>(create: (_) => ApiOrderRepository()),
+        Provider<OrderRepository>(
+          create: (ctx) => ApiOrderRepository(ctx.read<AuthProvider>()),
+        ),
         Provider<ReviewRepository>(
-          create: (_) => const DummyReviewRepository(),
+          create: (ctx) => ApiReviewRepository(ctx.read<AuthProvider>()),
         ),
         // Tiap orang boleh menambah provider miliknya di sini lewat PR kecil.
       ],

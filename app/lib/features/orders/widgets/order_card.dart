@@ -155,13 +155,16 @@ class OrderCard extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 10),
-          // Tombol ulasan hanya untuk pesanan yang sudah selesai.
-          if (order.status == OrderStatus.completed) ...[
+          // Tombol ulasan hanya untuk pesanan yang sudah selesai dan masih ada buku yang belum diulas.
+          if (order.status == OrderStatus.completed &&
+              order.reviewableBookId != null) ...[
             SizedBox(
               height: 28,
               child: OutlinedButton(
                 onPressed: () async {
-                  await context.push('/orders/${order.id}/review');
+                  await context.push(
+                    '/orders/${order.id}/review?book=${order.reviewableBookId}',
+                  );
                   onReturn?.call();
                 },
                 style: OutlinedButton.styleFrom(

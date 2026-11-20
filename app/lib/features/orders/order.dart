@@ -29,36 +29,19 @@ String formatOrderDate(DateTime d) {
   return '$day-$month-${d.year}';
 }
 
-/// Satu item dalam pesanan.
-class OrderItem {
-  final int bookId;
-  final int quantity;
-  final int price;
-  final String title;
-  final String image;
-
-  const OrderItem({
-    required this.bookId,
-    required this.quantity,
-    required this.price,
-    required this.title,
-    required this.image,
-  });
-
-  factory OrderItem.fromJson(Map<String, dynamic> json) => OrderItem(
-        bookId: _toInt(json['book_id']),
-        quantity: _toInt(json['quantity']),
-        price: _toInt(json['price']),
-        title: json['title'] as String? ?? '',
-        image: json['image'] as String? ?? '',
-      );
+int _toInt(Object? v, [int fallback = 0]) {
+  if (v is num) return v.round();
+  return num.tryParse(v?.toString() ?? '')?.round() ?? fallback;
 }
 
-int _toInt(dynamic v) {
-  if (v == null) return 0;
-  if (v is num) return v.toInt();
-  return num.tryParse(v.toString())?.toInt() ?? 0;
-}
+/// Status dari backend -> status di aplikasi.
+/// pending & processing = Dikemas, cancelled = Dibatalkan.
+OrderStatus orderStatusFromApi(String? status) => switch (status) {
+  'shipped' => OrderStatus.shipped,
+  'completed' => OrderStatus.completed,
+  'cancelled' => OrderStatus.canceled,
+  _ => OrderStatus.packed,
+};
 
 int? _toIntOpt(dynamic v) {
   if (v == null) return null;
@@ -66,11 +49,39 @@ int? _toIntOpt(dynamic v) {
   return num.tryParse(v.toString())?.toInt();
 }
 
+/// Satu item dalam pesanan.
+class OrderItem {
+  final int bookId;
+  final int quantity;
+  final int price;
+  final String title;
+  final String image;
+  final bool reviewed;
+
+  const OrderItem({
+    required this.bookId,
+    this.quantity = 1,
+    this.price = 0,
+    this.title = '',
+    this.image = '',
+    this.reviewed = false,
+  });
+
+  factory OrderItem.fromJson(Map<String, dynamic> json) => OrderItem(
+    bookId: _toInt(json['book_id']),
+    quantity: _toInt(json['quantity'], 1),
+    price: _toInt(json['price']),
+    title: json['title'] as String? ?? '',
+    image: json['image'] as String? ?? '',
+    reviewed: _toInt(json['reviewed']) > 0,
+  );
+}
+
 /// Model order. Data berasal dari REST API (orders.php).
 class Order {
   final int id;
-  final String orderNumber;
-  final String merchantOrderId;
+  final String? number;
+  final String? merchantOrderId;
   final String paymentStatus; // pending, paid, failed, expired, cancelled
   final int totalAmount;
   final String? snapToken;
@@ -80,6 +91,8 @@ class Order {
   final DateTime orderDate;
   final OrderStatus status;
   final int shippingCost;
+  final int tax;
+  final int discountAmount;
   final String recipientName;
   final String phone;
   final String address;
@@ -87,8 +100,8 @@ class Order {
 
   const Order({
     required this.id,
-    required this.orderNumber,
-    required this.merchantOrderId,
+    this.number,
+    this.merchantOrderId,
     required this.paymentStatus,
     required this.totalAmount,
     this.snapToken,
@@ -97,22 +110,32 @@ class Order {
     this.paymentMethod,
     required this.orderDate,
     required this.status,
-    required this.shippingCost,
-    required this.recipientName,
-    required this.phone,
-    required this.address,
     required this.items,
+    this.shippingCost = 0,
+    this.tax = 0,
+    this.discountAmount = 0,
+    this.recipientName = '',
+    this.phone = '',
+    this.address = '',
   });
 
-  factory Order.fromJson(Map<String, dynamic> json, Map<int, Map<String, dynamic>> booksMap) {
+  factory Order.fromJson(Map<String, dynamic> json) {
+    final address = [
+      json['address'],
+      json['district'],
+      json['city'],
+      json['province'],
+      json['postal_code'],
+    ].map((e) => e?.toString().trim() ?? '').where((e) => e.isNotEmpty).join(', ');
+
     final itemsList = (json['items'] as List<dynamic>? ?? [])
         .map((e) => OrderItem.fromJson(e as Map<String, dynamic>))
         .toList();
 
     return Order(
       id: _toInt(json['order_id']),
-      orderNumber: json['order_number'] as String? ?? '',
-      merchantOrderId: json['merchant_order_id'] as String? ?? '',
+      number: json['order_number'] as String?,
+      merchantOrderId: json['merchant_order_id'] as String?,
       paymentStatus: json['payment_status'] as String? ?? 'pending',
       totalAmount: _toInt(json['total_amount']),
       snapToken: json['snap_token'] as String?,
@@ -122,9 +145,11 @@ class Order {
       orderDate: _parseDateTime(json['created_at']),
       status: _mapPaymentStatusToOrderStatus(json['payment_status'] as String?),
       shippingCost: _toInt(json['shipping_cost']),
-      recipientName: json['recipient_name'] as String? ?? '',
-      phone: json['phone'] as String? ?? '',
-      address: json['address'] as String? ?? '',
+      tax: _toInt(json['tax']),
+      discountAmount: _toInt(json['discount_amount']),
+      recipientName: json['recipient_name']?.toString() ?? '',
+      phone: json['phone']?.toString() ?? '',
+      address: address.isEmpty ? '' : address,
       items: itemsList,
     );
   }
@@ -149,8 +174,18 @@ class Order {
     }
   }
 
-  /// Nomor pesanan untuk ditampilkan.
-  String get orderDisplayNumber => orderNumber.isNotEmpty ? orderNumber : 'NST-${id.toString().padLeft(5, '0')}';
+  /// Buku pertama di pesanan (dipakai untuk kartu di daftar pesanan).
+  int get bookId => items.isEmpty ? 0 : items.first.bookId;
+
+  /// Buku pertama yang belum diulas, atau null kalau semua sudah diulas.
+  int? get reviewableBookId =>
+      items.where((i) => !i.reviewed).map((i) => i.bookId).firstOrNull;
+
+  /// Nomor pesanan untuk ditampilkan, contoh: LB-2026-0012.
+  String get orderNumber => number ?? 'NST-${id.toString().padLeft(5, '0')}';
+
+  /// Nomor pesanan untuk ditampilkan (alias kompatibel versi lama).
+  String get orderDisplayNumber => orderNumber;
 
   /// Apakah pesanan masih menunggu pembayaran (bisa dibuka ulang instruksi pembayaran).
   bool get canShowPaymentInstructions =>
@@ -179,7 +214,7 @@ class Order {
     String? paymentMethod,
   }) => Order(
     id: id,
-    orderNumber: orderNumber,
+    number: number,
     merchantOrderId: merchantOrderId,
     paymentStatus: paymentStatus,
     totalAmount: totalAmount,
@@ -190,6 +225,8 @@ class Order {
     orderDate: orderDate,
     status: status ?? this.status,
     shippingCost: shippingCost,
+    tax: tax,
+    discountAmount: discountAmount,
     recipientName: recipientName,
     phone: phone,
     address: address,

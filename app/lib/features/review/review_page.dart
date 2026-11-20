@@ -16,7 +16,10 @@ import 'review_repository.dart';
 class ReviewPage extends StatefulWidget {
   final int? orderId;
 
-  const ReviewPage({super.key, required this.orderId});
+  /// Buku yang diulas. Kalau null, dipakai buku pertama yang belum diulas.
+  final int? bookId;
+
+  const ReviewPage({super.key, required this.orderId, this.bookId});
 
   @override
   State<ReviewPage> createState() => _ReviewPageState();
@@ -47,19 +50,23 @@ class _ReviewPageState extends State<ReviewPage> {
       if (id == null) return null;
       final order = await orderRepository.getOrderById(token: token, id: id);
       if (order == null || order.status != OrderStatus.completed) return null;
-      final firstItem = order.items.isNotEmpty ? order.items.first : null;
-      if (firstItem == null) return null;
       final books = await bookRepository.getBooks();
+
+      final targetBookId = widget.bookId ??
+          order.reviewableBookId ??
+          (order.items.isNotEmpty ? order.items.first.bookId : null);
+      if (targetBookId == null) return null;
+
       final book = books.firstWhere(
-        (b) => b.id == firstItem.bookId,
+        (b) => b.id == targetBookId,
         orElse: () => Book(
-          id: firstItem.bookId,
-          title: firstItem.title,
+          id: targetBookId,
+          title: '',
           author: '',
           publisher: '',
           description: '',
-          price: firstItem.price,
-          image: firstItem.image,
+          price: 0,
+          image: '',
           category: '',
           stock: 0,
         ),
