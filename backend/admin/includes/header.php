@@ -3,7 +3,7 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title><?php echo isset($page_title) ? $page_title . ' - ' : ''; ?>Letterbook Admin</title>
+    <title><?php echo isset($page_title) ? $page_title . ' - ' : ''; ?>Nestalla Admin</title>
 
     <!-- Font Awesome -->
     <link rel="stylesheet" href="../assets/adminlte/plugins/fontawesome-free/css/all.min.css">
