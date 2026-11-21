@@ -31,7 +31,7 @@ if($_SERVER['REQUEST_METHOD'] == 'POST') {
             $user = $stmt->fetch(PDO::FETCH_ASSOC);
             
             // Verify password (plain text untuk test, nanti ganti bcrypt)
-            if($password === 'password') { // Password default: password
+            if(password_verify($password, $user['password'] ?? '')) {
                 $_SESSION['admin_logged_in'] = true;
                 $_SESSION['admin_id'] = $user['user_id'];
                 $_SESSION['admin_username'] = $user['username'];
@@ -53,7 +53,7 @@ if($_SERVER['REQUEST_METHOD'] == 'POST') {
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Login - Letterbook Admin</title>
+    <title>Login - Nestalla Admin</title>
 
     <!-- Font Awesome -->
     <link rel="stylesheet" href="../assets/adminlte/plugins/fontawesome-free/css/all.min.css">
@@ -65,10 +65,10 @@ if($_SERVER['REQUEST_METHOD'] == 'POST') {
     <!-- Logo -->
     <div class="card card-outline card-primary">
         <div class="card-header text-center">
-            <h1><i class="fas fa-book"></i> <b>Letterbook</b> Admin</h1>
+            <h1><i class="fas fa-book"></i> <b>Nestalla</b> Admin</h1>
         </div>
         <div class="card-body">
-            <p class="login-box-msg">Sign in to start your session</p>
+            <p class="login-box-msg">Silahkan masuk ke akun Admin</p>
 
             <?php if($error): ?>
             <div class="alert alert-danger alert-dismissible">
@@ -103,9 +103,6 @@ if($_SERVER['REQUEST_METHOD'] == 'POST') {
 
             <div class="mt-3">
                 <p class="mb-1">
-                    <small class="text-muted">Default credentials:</small><br>
-                    <code>Username: admin</code><br>
-                    <code>Password: password</code>
                 </p>
             </div>
         </div>

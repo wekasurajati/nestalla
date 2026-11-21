@@ -3,7 +3,7 @@
     <!-- Brand Logo -->
     <a href="index.php" class="brand-link">
         <i class="fas fa-book brand-image" style="font-size: 2rem; opacity: .8"></i>
-        <span class="brand-text font-weight-light">Letterbook Admin</span>
+        <span class="brand-text font-weight-light">Nestalla Admin</span>
     </a>
 
     <!-- Sidebar -->
