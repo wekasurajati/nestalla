@@ -1,197 +1,247 @@
 <?php
 require_once 'includes/auth.php';
+require_once 'includes/orders_lib.php';
 
 $database = new Database();
 $conn = $database->getConnection();
 
-// Get statistics
-$query_books = "SELECT COUNT(*) as total FROM books";
-$stmt_books = $conn->prepare($query_books);
-$stmt_books->execute();
-$total_books = $stmt_books->fetch(PDO::FETCH_ASSOC)['total'];
+// ---------- Data ----------
+$totalBooks     = (int) db_scalar($conn, 'SELECT COUNT(*) FROM books');
+$totalCustomers = (int) db_scalar($conn, "SELECT COUNT(*) FROM users WHERE role = 'customer'");
+$totalOrders    = (int) db_scalar($conn, 'SELECT COUNT(*) FROM orders');
+$pendingOrders  = (int) db_scalar($conn, "SELECT COUNT(*) FROM orders WHERE status = 'pending'");
+$activePromos   = (int) db_scalar($conn, 'SELECT COUNT(*) FROM promo_codes WHERE is_active = 1');
+$revenue        = (float) db_scalar(
+    $conn,
+    "SELECT COALESCE(SUM(total_amount), 0) FROM orders WHERE (payment_status = 'paid' OR status = 'completed') AND status <> 'cancelled'"
+);
 
-$query_orders = "SELECT COUNT(*) as total FROM orders";
-$stmt_orders = $conn->prepare($query_orders);
-$stmt_orders->execute();
-$total_orders = $stmt_orders->fetch(PDO::FETCH_ASSOC)['total'];
+$lowStock = db_rows($conn, 'SELECT book_id, title, author, stock FROM books WHERE stock <= 5 ORDER BY stock ASC, title ASC LIMIT 5');
 
-$query_users = "SELECT COUNT(*) as total FROM users WHERE role = 'customer'";
-$stmt_users = $conn->prepare($query_users);
-$stmt_users->execute();
-$total_users = $stmt_users->fetch(PDO::FETCH_ASSOC)['total'];
+$recent = db_rows(
+    $conn,
+    'SELECT o.order_id, o.order_number, o.total_amount, o.status, o.payment_status, o.created_at, u.full_name
+     FROM orders o LEFT JOIN users u ON u.user_id = o.user_id
+     ORDER BY o.created_at DESC LIMIT 6'
+);
 
-$query_promos = "SELECT COUNT(*) as total FROM promo_codes WHERE is_active = TRUE";
-$stmt_promos = $conn->prepare($query_promos);
-$stmt_promos->execute();
-$total_promos = $stmt_promos->fetch(PDO::FETCH_ASSOC)['total'];
+// Pesanan 7 hari terakhir
+$perDay = [];
+foreach (db_rows($conn, 'SELECT DATE(created_at) AS d, COUNT(*) AS c FROM orders WHERE created_at >= DATE_SUB(CURDATE(), INTERVAL 6 DAY) GROUP BY DATE(created_at)') as $r) {
+    $perDay[$r['d']] = (int) $r['c'];
+}
+$dayLabels = [];
+$dayCounts = [];
+for ($i = 6; $i >= 0; $i--) {
+    $ts = strtotime("-$i day");
+    $dayLabels[] = date('d/m', $ts);
+    $dayCounts[] = $perDay[date('Y-m-d', $ts)] ?? 0;
+}
 
-// Total revenue
-$query_revenue = "SELECT SUM(total_amount) as total FROM orders WHERE status = 'completed'";
-$stmt_revenue = $conn->prepare($query_revenue);
-$stmt_revenue->execute();
-$total_revenue = $stmt_revenue->fetch(PDO::FETCH_ASSOC)['total'] ?? 0;
+// Sebaran status
+$toneColor = ['ok' => '#1E9E6A', 'warn' => '#E39A1B', 'info' => '#3066BE', 'bad' => '#D8453F', 'muted' => '#9AA5BB'];
+$statusLabels = [];
+$statusCounts = [];
+$statusColors = [];
+foreach (db_rows($conn, 'SELECT status, COUNT(*) AS c FROM orders GROUP BY status ORDER BY c DESC') as $r) {
+    $statusLabels[] = status_label($r['status']);
+    $statusCounts[] = (int) $r['c'];
+    $statusColors[] = $toneColor[status_tone($r['status'])] ?? '#9AA5BB';
+}
 
-// Recent orders
-$query_recent = "SELECT o.*, u.full_name FROM orders o 
-                 LEFT JOIN users u ON o.user_id = u.user_id 
-                 ORDER BY o.created_at DESC LIMIT 5";
-$stmt_recent = $conn->prepare($query_recent);
-$stmt_recent->execute();
-$recent_orders = $stmt_recent->fetchAll(PDO::FETCH_ASSOC);
+$hari = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
+$bulan = ['', 'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
+$today = $hari[(int) date('w')] . ', ' . date('j') . ' ' . $bulan[(int) date('n')] . ' ' . date('Y');
 
-$page_title = "Dashboard";
+$page_title = 'Dashboard';
 include 'includes/header.php';
 include 'includes/sidebar.php';
 ?>
 
-<!-- Content Wrapper -->
 <div class="content-wrapper">
-    <!-- Content Header -->
     <div class="content-header">
         <div class="container-fluid">
-            <div class="row mb-2">
-                <div class="col-sm-6">
-                    <h1 class="m-0">Dashboard</h1>
-                </div>
-                <div class="col-sm-6">
-                    <ol class="breadcrumb float-sm-right">
-                        <li class="breadcrumb-item active">Dashboard</li>
-                    </ol>
-                </div>
+            <div class="nv-hello">
+                <h2>Halo, <?php echo e($_SESSION['admin_name'] ?? 'Admin'); ?> 👋</h2>
+                <p><?php echo e($today); ?> &middot; <?php echo $pendingOrders; ?> pesanan menunggu diproses.</p>
             </div>
         </div>
     </div>
 
-    <!-- Main content -->
     <section class="content">
         <div class="container-fluid">
-            
-            <!-- Info boxes -->
+            <?php echo flash_render(); ?>
+
             <div class="row">
-                <div class="col-lg-3 col-6">
-                    <div class="small-box bg-info">
-                        <div class="inner">
-                            <h3><?php echo $total_books; ?></h3>
-                            <p>Total Books</p>
+                <div class="col-sm-6 col-xl-3 mb-3">
+                    <div class="nv-stat">
+                        <div class="nv-stat__icon nv-stat__icon--navy"><i class="fas fa-book-open"></i></div>
+                        <div>
+                            <div class="nv-stat__label">Total buku</div>
+                            <div class="nv-stat__value"><?php echo number_format($totalBooks, 0, ',', '.'); ?></div>
+                            <div class="nv-stat__hint"><?php echo count($lowStock); ?> buku stok menipis</div>
                         </div>
-                        <div class="icon">
-                            <i class="fas fa-book"></i>
-                        </div>
-                        <a href="books.php" class="small-box-footer">More info <i class="fas fa-arrow-circle-right"></i></a>
                     </div>
                 </div>
-
-                <div class="col-lg-3 col-6">
-                    <div class="small-box bg-success">
-                        <div class="inner">
-                            <h3><?php echo $total_orders; ?></h3>
-                            <p>Total Orders</p>
+                <div class="col-sm-6 col-xl-3 mb-3">
+                    <div class="nv-stat">
+                        <div class="nv-stat__icon nv-stat__icon--sky"><i class="fas fa-receipt"></i></div>
+                        <div>
+                            <div class="nv-stat__label">Total pesanan</div>
+                            <div class="nv-stat__value"><?php echo number_format($totalOrders, 0, ',', '.'); ?></div>
+                            <div class="nv-stat__hint"><?php echo $pendingOrders; ?> menunggu</div>
                         </div>
-                        <div class="icon">
-                            <i class="fas fa-shopping-cart"></i>
-                        </div>
-                        <a href="orders.php" class="small-box-footer">More info <i class="fas fa-arrow-circle-right"></i></a>
                     </div>
                 </div>
-
-                <div class="col-lg-3 col-6">
-                    <div class="small-box bg-warning">
-                        <div class="inner">
-                            <h3><?php echo $total_users; ?></h3>
-                            <p>Total Users</p>
+                <div class="col-sm-6 col-xl-3 mb-3">
+                    <div class="nv-stat">
+                        <div class="nv-stat__icon nv-stat__icon--amber"><i class="fas fa-users"></i></div>
+                        <div>
+                            <div class="nv-stat__label">Pelanggan</div>
+                            <div class="nv-stat__value"><?php echo number_format($totalCustomers, 0, ',', '.'); ?></div>
+                            <div class="nv-stat__hint"><?php echo $activePromos; ?> promo aktif</div>
                         </div>
-                        <div class="icon">
-                            <i class="fas fa-users"></i>
-                        </div>
-                        <a href="users.php" class="small-box-footer">More info <i class="fas fa-arrow-circle-right"></i></a>
                     </div>
                 </div>
-
-                <div class="col-lg-3 col-6">
-                    <div class="small-box bg-danger">
-                        <div class="inner">
-                            <h3><?php echo $total_promos; ?></h3>
-                            <p>Active Promos</p>
+                <div class="col-sm-6 col-xl-3 mb-3">
+                    <div class="nv-stat">
+                        <div class="nv-stat__icon nv-stat__icon--green"><i class="fas fa-wallet"></i></div>
+                        <div>
+                            <div class="nv-stat__label">Pendapatan</div>
+                            <div class="nv-stat__value"><?php echo e(formatRupiah($revenue)); ?></div>
+                            <div class="nv-stat__hint">Pesanan lunas atau selesai</div>
                         </div>
-                        <div class="icon">
-                            <i class="fas fa-tag"></i>
-                        </div>
-                        <a href="promos.php" class="small-box-footer">More info <i class="fas fa-arrow-circle-right"></i></a>
                     </div>
                 </div>
             </div>
 
-            <!-- Revenue Card -->
             <div class="row">
-                <div class="col-md-12">
-                    <div class="card">
-                        <div class="card-header">
-                            <h3 class="card-title"><i class="fas fa-dollar-sign"></i> Total Revenue</h3>
-                        </div>
+                <div class="col-lg-8 mb-3">
+                    <div class="card h-100">
+                        <div class="card-header"><h3 class="card-title">Pesanan 7 hari terakhir</h3></div>
                         <div class="card-body">
-                            <h2 class="text-success"><?php echo formatRupiah($total_revenue); ?></h2>
-                            <p class="text-muted">From completed orders</p>
+                            <?php if ($totalOrders === 0): ?>
+                                <div class="nv-empty"><i class="fas fa-chart-column"></i>Belum ada pesanan untuk ditampilkan.</div>
+                            <?php else: ?>
+                                <div style="height:260px"><canvas id="chartDays"></canvas></div>
+                            <?php endif; ?>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-lg-4 mb-3">
+                    <div class="card h-100">
+                        <div class="card-header"><h3 class="card-title">Status pesanan</h3></div>
+                        <div class="card-body">
+                            <?php if ($totalOrders === 0): ?>
+                                <div class="nv-empty"><i class="fas fa-chart-pie"></i>Belum ada data.</div>
+                            <?php else: ?>
+                                <div style="height:260px"><canvas id="chartStatus"></canvas></div>
+                            <?php endif; ?>
                         </div>
                     </div>
                 </div>
             </div>
 
-            <!-- Recent Orders -->
             <div class="row">
-                <div class="col-md-12">
-                    <div class="card">
-                        <div class="card-header">
-                            <h3 class="card-title"><i class="fas fa-list"></i> Recent Orders</h3>
+                <div class="col-lg-8 mb-3">
+                    <div class="card h-100">
+                        <div class="card-header d-flex align-items-center justify-content-between">
+                            <h3 class="card-title mb-0">Pesanan terbaru</h3>
+                            <a href="orders.php" class="btn btn-sm btn-light-nv">Lihat semua</a>
                         </div>
                         <div class="card-body p-0">
-                            <table class="table table-striped">
-                                <thead>
-                                    <tr>
-                                        <th>Order Number</th>
-                                        <th>Customer</th>
-                                        <th>Total</th>
-                                        <th>Status</th>
-                                        <th>Date</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    <?php if(count($recent_orders) > 0): ?>
-                                        <?php foreach($recent_orders as $order): ?>
-                                        <tr>
-                                            <td><?php echo $order['order_number']; ?></td>
-                                            <td><?php echo $order['customer_name'] ?? 'Guest'; ?></td>
-                                            <td><?php echo formatRupiah($order['total_amount']); ?></td>
-                                            <td>
-                                                <?php
-                                                $badge_class = '';
-                                                switch($order['status']) {
-                                                    case 'pending': $badge_class = 'warning'; break;
-                                                    case 'processing': $badge_class = 'info'; break;
-                                                    case 'completed': $badge_class = 'success'; break;
-                                                    case 'cancelled': $badge_class = 'danger'; break;
-                                                }
-                                                ?>
-                                                <span class="badge badge-<?php echo $badge_class; ?>">
-                                                    <?php echo ucfirst($order['status']); ?>
-                                                </span>
-                                            </td>
-                                            <td><?php echo formatTanggal($order['created_at']); ?></td>
-                                        </tr>
+                            <?php if (!$recent): ?>
+                                <div class="nv-empty"><i class="fas fa-receipt"></i>Belum ada pesanan.</div>
+                            <?php else: ?>
+                                <div class="table-responsive">
+                                    <table class="table table-hover mb-0">
+                                        <thead><tr><th>Pesanan</th><th>Pelanggan</th><th>Total</th><th>Status</th></tr></thead>
+                                        <tbody>
+                                        <?php foreach ($recent as $o): ?>
+                                            <tr>
+                                                <td>
+                                                    <a href="orders-detail.php?id=<?php echo (int) $o['order_id']; ?>"><strong><?php echo e($o['order_number']); ?></strong></a>
+                                                    <br><small class="text-muted"><?php echo e(formatTanggal($o['created_at'])); ?></small>
+                                                </td>
+                                                <td><?php echo e($o['full_name'] ?? 'Pelanggan'); ?></td>
+                                                <td><strong><?php echo e(formatRupiah($o['total_amount'])); ?></strong></td>
+                                                <td><?php echo badge(status_tone($o['status']), status_label($o['status'])); ?></td>
+                                            </tr>
                                         <?php endforeach; ?>
-                                    <?php else: ?>
-                                        <tr>
-                                            <td colspan="5" class="text-center">No orders yet</td>
-                                        </tr>
-                                    <?php endif; ?>
-                                </tbody>
-                            </table>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            <?php endif; ?>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-lg-4 mb-3">
+                    <div class="card h-100">
+                        <div class="card-header d-flex align-items-center justify-content-between">
+                            <h3 class="card-title mb-0">Stok menipis</h3>
+                            <a href="books.php" class="btn btn-sm btn-light-nv">Kelola buku</a>
+                        </div>
+                        <div class="card-body">
+                            <?php if (!$lowStock): ?>
+                                <div class="nv-empty"><i class="fas fa-circle-check"></i>Semua stok aman.</div>
+                            <?php else: ?>
+                                <?php foreach ($lowStock as $b): ?>
+                                    <div class="nv-kv">
+                                        <span><strong class="text-dark"><?php echo e($b['title']); ?></strong><br><small><?php echo e($b['author']); ?></small></span>
+                                        <span><?php echo badge((int) $b['stock'] === 0 ? 'bad' : 'warn', (int) $b['stock'] === 0 ? 'Habis' : 'Sisa ' . (int) $b['stock']); ?></span>
+                                    </div>
+                                <?php endforeach; ?>
+                            <?php endif; ?>
                         </div>
                     </div>
                 </div>
             </div>
-
         </div>
     </section>
 </div>
 
-<?php include 'includes/footer.php'; ?>
+<?php
+$flags = JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_UNESCAPED_UNICODE;
+ob_start();
+?>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<script>
+(function () {
+    if (typeof Chart === 'undefined') { return; }
+    Chart.defaults.font.family = "'Plus Jakarta Sans', system-ui, sans-serif";
+    Chart.defaults.color = '#6B778F';
+
+    var days = document.getElementById('chartDays');
+    if (days) {
+        new Chart(days, {
+            type: 'bar',
+            data: {
+                labels: <?php echo json_encode($dayLabels, $flags); ?>,
+                datasets: [{ label: 'Pesanan', data: <?php echo json_encode($dayCounts, $flags); ?>,
+                             backgroundColor: '#3066BE', borderRadius: 8, maxBarThickness: 38 }]
+            },
+            options: {
+                maintainAspectRatio: false,
+                plugins: { legend: { display: false } },
+                scales: { y: { beginAtZero: true, ticks: { precision: 0 }, grid: { color: '#EEF1F7' } }, x: { grid: { display: false } } }
+            }
+        });
+    }
+
+    var status = document.getElementById('chartStatus');
+    if (status) {
+        new Chart(status, {
+            type: 'doughnut',
+            data: {
+                labels: <?php echo json_encode($statusLabels, $flags); ?>,
+                datasets: [{ data: <?php echo json_encode($statusCounts, $flags); ?>,
+                             backgroundColor: <?php echo json_encode($statusColors, $flags); ?>, borderWidth: 0 }]
+            },
+            options: { maintainAspectRatio: false, cutout: '68%', plugins: { legend: { position: 'bottom' } } }
+        });
+    }
+})();
+</script>
+<?php
+$extra_js = ob_get_clean();
+include 'includes/footer.php';

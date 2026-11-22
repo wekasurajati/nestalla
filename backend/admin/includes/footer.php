@@ -1,53 +1,43 @@
-<!-- Footer -->
     <footer class="main-footer">
-        <strong>Copyright &copy; 2026 <a href="#">Nestalla</a>.</strong>
-        All rights reserved.
-        <div class="float-right d-none d-sm-inline-block">
-            <b>Version</b> 1.0.0
-        </div>
+        <strong>&copy; <?php echo date('Y'); ?> Nestalla.</strong> Panel admin toko buku.
+        <div class="float-right d-none d-sm-inline-block">Versi 1.1</div>
     </footer>
 
 </div>
-<!-- ./wrapper -->
 
-<!-- jQuery -->
 <script src="../assets/adminlte/plugins/jquery/jquery.min.js"></script>
-<!-- Bootstrap 4 -->
 <script src="../assets/adminlte/plugins/bootstrap/js/bootstrap.bundle.min.js"></script>
-<!-- AdminLTE App -->
 <script src="../assets/adminlte/dist/js/adminlte.min.js"></script>
-<!-- DataTables -->
 <script src="../assets/adminlte/plugins/datatables/jquery.dataTables.min.js"></script>
 <script src="../assets/adminlte/plugins/datatables-bs4/js/dataTables.bootstrap4.min.js"></script>
 
 <script>
-$(document).ready(function() {
-    // Inisialisasi Data Tabel
+$(function () {
+    // Tabel data berbahasa Indonesia
+    $.extend(true, $.fn.dataTable.defaults, {
+        language: {
+            search: 'Cari:', lengthMenu: 'Tampilkan _MENU_ data',
+            info: 'Menampilkan _START_–_END_ dari _TOTAL_ data',
+            infoEmpty: 'Tidak ada data', infoFiltered: '(disaring dari _MAX_ data)',
+            zeroRecords: 'Tidak ada data yang cocok', emptyTable: 'Belum ada data',
+            paginate: { previous: 'Sebelumnya', next: 'Berikutnya' }
+        }
+    });
+    // tabel dengan class .datatable memakai pengaturan umum
     $('.datatable').DataTable({
-        "paging": true,
-        "lengthChange": true,
-        "searching": true,
-        "ordering": true,
-        "info": true,
-        "autoWidth": false,
-        "responsive": true,
+        paging: true, lengthChange: true, searching: true, ordering: true,
+        info: true, autoWidth: false, responsive: true
     });
 
-    // Auto-dismiss alerts setelah 5 detik
-    setTimeout(function() {
-        $('.alert').fadeOut('slow');
-    }, 5000);
+    // Pesan sukses/gagal hilang sendiri setelah 6 detik
+    setTimeout(function () { $('.alert').fadeOut('slow'); }, 6000);
 
-    // Confirm delete
-    $('.btn-delete').click(function(e) {
-        if(!confirm('Are you sure you want to delete this item?')) {
-            e.preventDefault();
-        }
+    // Konfirmasi hapus
+    $('.btn-delete').on('click', function (e) {
+        if (!confirm('Yakin ingin menghapus data ini?')) { e.preventDefault(); }
     });
 });
 </script>
-
+<?php if (!empty($extra_js)) { echo $extra_js; } ?>
 </body>
 </html>
-
-

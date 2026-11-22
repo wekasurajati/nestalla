@@ -1,0 +1,121 @@
+/* Nestalla Admin - tema di atas AdminLTE 3 */
+:root{
+  --nv-900:#12294F; --nv-800:#17325F; --nv-700:#1B3A6B; --nv-500:#3066BE;
+  --nv-200:#C9D7EF; --nv-100:#E8EEF9; --nv-50:#F3F6FC;
+  --bg:#F5F7FB; --ink:#1E2A44; --muted:#6B778F; --line:#E6EBF3;
+  --ok:#1E9E6A; --warn:#E39A1B; --bad:#D8453F; --info:#3066BE;
+  --radius:14px;
+}
+html,body{font-family:'Plus Jakarta Sans',system-ui,-apple-system,'Segoe UI',Roboto,sans-serif;color:var(--ink)}
+body,.content-wrapper{background:var(--bg)}
+a{color:var(--nv-500)} a:hover{color:var(--nv-700)}
+
+/* ---------- Navbar ---------- */
+.main-header.navbar{background:#fff;border-bottom:0;box-shadow:0 1px 0 var(--line)}
+.main-header .nav-link{color:var(--muted)}
+.main-header .nav-link:hover{color:var(--nv-700)}
+.nv-user{display:flex;align-items:center;gap:.6rem;padding:.25rem .5rem !important}
+.nv-avatar{width:34px;height:34px;border-radius:50%;background:var(--nv-100);color:var(--nv-700);
+  display:inline-flex;align-items:center;justify-content:center;font-weight:700;font-size:.85rem}
+.nv-user small{display:block;color:var(--muted);line-height:1}
+.nv-user strong{display:block;line-height:1.2;color:var(--ink);font-size:.9rem}
+
+/* ---------- Sidebar ---------- */
+.main-sidebar.nv-sidebar{background:#fff;box-shadow:1px 0 0 var(--line)}
+.nv-sidebar .brand-link{display:flex;align-items:center;gap:.7rem;padding:1rem 1.1rem;border-bottom:0;color:var(--nv-900)}
+.nv-brand-full{height:38px;width:auto;display:block}
+.nv-brand-mark{height:34px;width:34px;display:none}
+.nv-brand-tag{margin-left:auto;font-size:.62rem;font-weight:800;letter-spacing:.1em;color:var(--nv-700);background:var(--nv-100);padding:.25rem .5rem;border-radius:999px}
+.sidebar-mini.sidebar-collapse .main-sidebar:not(:hover) .nv-brand-full,
+.sidebar-mini.sidebar-collapse .main-sidebar:not(:hover) .nv-brand-tag{display:none}
+.sidebar-mini.sidebar-collapse .main-sidebar:not(:hover) .nv-brand-mark{display:block;margin:0 auto}
+.nv-sidebar .sidebar{padding:.25rem .8rem 1rem}
+.nv-nav-label{font-size:.68rem;font-weight:700;letter-spacing:.09em;color:#9AA5BB;text-transform:uppercase;padding:1rem .6rem .35rem}
+.main-sidebar.nv-sidebar .nav-sidebar>.nav-item>.nav-link{color:#4A5775;border-radius:10px;padding:.6rem .8rem;margin-bottom:2px;font-weight:600;font-size:.92rem}
+.main-sidebar.nv-sidebar .nav-sidebar>.nav-item>.nav-link .nav-icon{color:#8793AB;width:1.6rem;font-size:.95rem}
+.main-sidebar.nv-sidebar .nav-sidebar>.nav-item>.nav-link:hover{background:var(--nv-50);color:var(--nv-700)}
+.main-sidebar.nv-sidebar .nav-sidebar>.nav-item>.nav-link.active{background:var(--nv-700);color:#fff;box-shadow:0 6px 14px rgba(27,58,107,.25)}
+.main-sidebar.nv-sidebar .nav-sidebar>.nav-item>.nav-link.active .nav-icon{color:#fff}
+
+/* ---------- Konten ---------- */
+.content-header{padding:1.3rem .5rem .6rem}
+.content-header h1{font-size:1.5rem;font-weight:800;letter-spacing:-.02em;color:var(--nv-900)}
+.content-header h1 i{color:var(--nv-500);margin-right:.35rem;font-size:1.15rem}
+.breadcrumb{background:transparent;font-size:.85rem}
+.nv-pagehead{display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:space-between;gap:.75rem}
+.nv-pagehead p{margin:.2rem 0 0;color:var(--muted)}
+.card{border:0;border-radius:var(--radius);box-shadow:0 1px 2px rgba(18,41,79,.05),0 10px 28px rgba(18,41,79,.05)}
+.card-header{background:transparent;border-bottom:1px solid var(--line);padding:1rem 1.25rem}
+.card-title{font-weight:700;font-size:1rem;color:var(--nv-900)}
+.card-body{padding:1.25rem}
+
+/* ---------- Tombol ---------- */
+.btn{border-radius:10px;font-weight:600}
+.btn-primary{background:var(--nv-700);border-color:var(--nv-700)}
+.btn-primary:hover,.btn-primary:focus{background:var(--nv-900);border-color:var(--nv-900)}
+.btn-info{background:var(--nv-500);border-color:var(--nv-500);color:#fff}
+.btn-info:hover{background:#264f98;border-color:#264f98;color:#fff}
+.btn-light-nv{background:var(--nv-100);color:var(--nv-700);border-color:transparent}
+.btn-light-nv:hover{background:var(--nv-200);color:var(--nv-900)}
+.form-control,.custom-select{border-radius:10px;border-color:#D9E0EC}
+.form-control:focus,.custom-select:focus{border-color:var(--nv-500);box-shadow:0 0 0 .2rem rgba(48,102,190,.15)}
+
+/* ---------- Tabel & badge ---------- */
+.table thead th{border-top:0;border-bottom:1px solid var(--line);font-size:.72rem;letter-spacing:.07em;text-transform:uppercase;color:var(--muted);font-weight:700;background:#FAFBFE}
+.table td{vertical-align:middle;border-color:var(--line)}
+.table-striped tbody tr:nth-of-type(odd){background:#FBFCFF}
+.table-hover tbody tr:hover{background:var(--nv-50)}
+.badge{border-radius:999px;font-weight:700;padding:.4em .75em;letter-spacing:.01em}
+.nv-badge{display:inline-block;border-radius:999px;padding:.28em .75em;font-size:.76rem;font-weight:700;white-space:nowrap}
+.nv-badge--ok{background:#E3F6EE;color:#13734C}
+.nv-badge--warn{background:#FDF1DA;color:#9A6408}
+.nv-badge--bad{background:#FBE5E3;color:#A32B26}
+.nv-badge--info{background:var(--nv-100);color:var(--nv-700)}
+.nv-badge--muted{background:#EDF0F6;color:#5A6781}
+.dataTables_wrapper .dataTables_filter input,.dataTables_wrapper .dataTables_length select{border-radius:10px}
+.page-item.active .page-link{background:var(--nv-700);border-color:var(--nv-700)}
+.page-link{color:var(--nv-700)}
+
+/* ---------- Kartu statistik ---------- */
+.nv-stat{display:flex;align-items:center;gap:1rem;padding:1.15rem 1.25rem;background:#fff;border-radius:var(--radius);
+  box-shadow:0 1px 2px rgba(18,41,79,.05),0 10px 28px rgba(18,41,79,.05);height:100%}
+.nv-stat__icon{width:48px;height:48px;border-radius:13px;display:flex;align-items:center;justify-content:center;font-size:1.2rem;flex:none}
+.nv-stat__icon--navy{background:var(--nv-100);color:var(--nv-700)}
+.nv-stat__icon--green{background:#E3F6EE;color:#13734C}
+.nv-stat__icon--amber{background:#FDF1DA;color:#9A6408}
+.nv-stat__icon--sky{background:#E4F2FB;color:#1C6FA6}
+.nv-stat__label{color:var(--muted);font-size:.8rem;font-weight:600}
+.nv-stat__value{font-size:1.55rem;font-weight:800;letter-spacing:-.02em;line-height:1.15;color:var(--nv-900)}
+.nv-stat__hint{font-size:.75rem;color:var(--muted)}
+.nv-hello{background:linear-gradient(120deg,var(--nv-900),var(--nv-700) 60%,var(--nv-500));color:#fff;border-radius:var(--radius);padding:1.4rem 1.6rem}
+.nv-hello h2{font-size:1.35rem;font-weight:800;margin:0 0 .2rem}
+.nv-hello p{margin:0;opacity:.85}
+.nv-empty{text-align:center;color:var(--muted);padding:2rem 1rem}
+.nv-empty i{font-size:1.8rem;color:var(--nv-200);display:block;margin-bottom:.5rem}
+.nv-cover{width:42px;height:58px;border-radius:7px;object-fit:cover;background:var(--nv-100)}
+.nv-cover--ph{display:inline-flex;align-items:center;justify-content:center;color:var(--nv-500)}
+.nv-kv{display:flex;justify-content:space-between;gap:1rem;padding:.45rem 0;border-bottom:1px dashed var(--line)}
+.nv-kv:last-child{border-bottom:0}
+.nv-kv span:first-child{color:var(--muted)}
+.nv-total{font-size:1.15rem;font-weight:800;color:var(--nv-900)}
+
+/* ---------- Footer ---------- */
+.main-footer{background:transparent;border-top:1px solid var(--line);color:var(--muted);font-size:.85rem}
+.alert{border:0;border-radius:12px}
+
+/* ---------- Form & komponen tambahan ---------- */
+.form-group label{font-weight:700;font-size:.85rem;color:#3B4763}
+.nv-req{color:var(--bad)}
+.nv-help{display:block;margin-top:.3rem;font-size:.78rem;color:var(--muted)}
+.nv-cover-preview{width:140px;height:196px;border-radius:12px;object-fit:cover;background:var(--nv-100);display:block;margin:0 auto .75rem;
+  box-shadow:0 6px 18px rgba(18,41,79,.15)}
+.nv-cover-preview--ph{display:flex;align-items:center;justify-content:center;color:var(--nv-500);font-size:2.2rem}
+.custom-file-label{border-radius:10px}
+.custom-file-input:focus~.custom-file-label{border-color:var(--nv-500);box-shadow:0 0 0 .2rem rgba(48,102,190,.15)}
+.custom-control-input:checked~.custom-control-label::before{background:var(--nv-700);border-color:var(--nv-700)}
+.nv-actions{display:flex;gap:.4rem;justify-content:flex-end;flex-wrap:wrap}
+.nv-actions form{margin:0}
+.nv-stars{color:#F2B01E;white-space:nowrap}
+.nv-stars .off{color:#D9E0EC}
+.nv-quote{margin:0;color:#3B4763;white-space:pre-line}
+.nv-avatar-sm{width:34px;height:34px;border-radius:50%;background:var(--nv-100);color:var(--nv-700);display:inline-flex;align-items:center;justify-content:center;font-weight:700;font-size:.8rem;flex:none}

@@ -1,297 +1,137 @@
 <?php
-session_start();
-require_once '../config/database.php';
-
-// Check if admin is logged in
-if (!isset($_SESSION['admin_id'])) {
-    header('Location: login.php');
-    exit();
-}
+require_once 'includes/auth.php';
 
 $database = new Database();
 $conn = $database->getConnection();
+$conn->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 
-// Handle approve/reject/delete actions
-if (isset($_POST['action']) && isset($_POST['testimonial_id'])) {
-    $testimonial_id = intval($_POST['testimonial_id']);
-    $action = $_POST['action'];
-    
-    if ($action === 'approve') {
-        $query = "UPDATE testimonials SET status = 'approved' WHERE testimonial_id = :id";
-        $stmt = $conn->prepare($query);
-        $stmt->bindParam(':id', $testimonial_id);
-        if ($stmt->execute()) {
-            $_SESSION['success'] = 'Testimonial approved successfully';
-        }
-    } else if ($action === 'reject') {
-        $query = "UPDATE testimonials SET status = 'rejected' WHERE testimonial_id = :id";
-        $stmt = $conn->prepare($query);
-        $stmt->bindParam(':id', $testimonial_id);
-        if ($stmt->execute()) {
-            $_SESSION['success'] = 'Testimonial rejected';
-        }
-    } else if ($action === 'delete') {
-        $query = "DELETE FROM testimonials WHERE testimonial_id = :id";
-        $stmt = $conn->prepare($query);
-        $stmt->bindParam(':id', $testimonial_id);
-        if ($stmt->execute()) {
-            $_SESSION['success'] = 'Testimonial deleted successfully';
+// ---------- Hapus ulasan (POST + CSRF) ----------
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_id'])) {
+    if (!csrf_valid()) {
+        flash('error', 'Sesi tidak valid. Muat ulang halaman lalu coba lagi.');
+    } else {
+        try {
+            $conn->prepare('DELETE FROM testimonials WHERE testimonial_id = :id')->execute([':id' => (int) $_POST['delete_id']]);
+            flash('success', 'Ulasan dihapus.');
+        } catch (PDOException $ex) {
+            error_log('[admin] hapus ulasan: ' . $ex->getMessage());
+            flash('error', 'Ulasan gagal dihapus.');
         }
     }
-    
     header('Location: testimonials.php');
-    exit();
+    exit;
 }
 
-// Get filter
-$filter = isset($_GET['filter']) ? $_GET['filter'] : 'all';
+$items = db_rows(
+    $conn,
+    'SELECT t.testimonial_id, t.rating, t.message, t.is_anonymous, t.created_at,
+            u.full_name, u.username, b.title AS book_title, o.order_id, o.order_number
+     FROM testimonials t
+     LEFT JOIN users u ON u.user_id = t.user_id
+     LEFT JOIN books b ON b.book_id = t.book_id
+     LEFT JOIN orders o ON o.order_id = t.order_id
+     ORDER BY t.created_at DESC'
+);
 
-// Fetch testimonials
-$query = "SELECT t.*, u.full_name, u.email, o.order_number 
-          FROM testimonials t 
-          JOIN users u ON t.user_id = u.user_id 
-          LEFT JOIN orders o ON t.order_id = o.order_id";
+$total = count($items);
+$avg = $total ? array_sum(array_column($items, 'rating')) / $total : 0;
+$anon = count(array_filter($items, function ($i) { return !empty($i['is_anonymous']); }));
 
-if ($filter !== 'all') {
-    $query .= " WHERE t.status = :status";
+function stars_html($n)
+{
+    $n = max(0, min(5, (int) $n));
+    return '<span class="nv-stars">' . str_repeat('<i class="fas fa-star"></i>', $n)
+         . '<span class="off">' . str_repeat('<i class="fas fa-star"></i>', 5 - $n) . '</span></span>';
 }
 
-$query .= " ORDER BY t.created_at DESC";
-
-$stmt = $conn->prepare($query);
-
-if ($filter !== 'all') {
-    $stmt->bindParam(':status', $filter);
-}
-
-$stmt->execute();
-$testimonials = $stmt->fetchAll(PDO::FETCH_ASSOC);
-
-// Count by status
-$query_counts = "SELECT 
-                    SUM(CASE WHEN status = 'pending' THEN 1 ELSE 0 END) as pending_count,
-                    SUM(CASE WHEN status = 'approved' THEN 1 ELSE 0 END) as approved_count,
-                    SUM(CASE WHEN status = 'rejected' THEN 1 ELSE 0 END) as rejected_count,
-                    COUNT(*) as total_count
-                FROM testimonials";
-$stmt_counts = $conn->prepare($query_counts);
-$stmt_counts->execute();
-$counts = $stmt_counts->fetch(PDO::FETCH_ASSOC);
-
+$page_title = 'Testimoni';
 include 'includes/header.php';
+include 'includes/sidebar.php';
 ?>
 
 <div class="content-wrapper">
-    <div class="content-header">
+    <section class="content-header">
         <div class="container-fluid">
-            <div class="row mb-2">
-                <div class="col-sm-6">
-                    <h1 class="m-0">Testimonials Management</h1>
-                </div>
-                <div class="col-sm-6">
-                    <ol class="breadcrumb float-sm-right">
-                        <li class="breadcrumb-item"><a href="index.php">Home</a></li>
-                        <li class="breadcrumb-item active">Testimonials</li>
-                    </ol>
+            <div class="nv-pagehead">
+                <div>
+                    <h1><i class="fas fa-comment-dots"></i>Testimoni</h1>
+                    <p>Ulasan yang ditulis pelanggan setelah pesanan selesai.</p>
                 </div>
             </div>
         </div>
-    </div>
+    </section>
 
     <section class="content">
         <div class="container-fluid">
-            
-            <?php if (isset($_SESSION['success'])): ?>
-                <div class="alert alert-success alert-dismissible fade show">
-                    <button type="button" class="close" data-dismiss="alert">&times;</button>
-                    <?php 
-                        echo $_SESSION['success']; 
-                        unset($_SESSION['success']);
-                    ?>
-                </div>
-            <?php endif; ?>
+            <?php echo flash_render(); ?>
 
-            <!-- Stats Cards -->
-            <div class="row mb-3">
-                <div class="col-md-3">
-                    <div class="small-box bg-warning">
-                        <div class="inner">
-                            <h3><?php echo $counts['pending_count']; ?></h3>
-                            <p>Pending Reviews</p>
-                        </div>
-                        <div class="icon">
-                            <i class="fas fa-clock"></i>
-                        </div>
-                        <a href="?filter=pending" class="small-box-footer">View <i class="fas fa-arrow-circle-right"></i></a>
-                    </div>
-                </div>
-                <div class="col-md-3">
-                    <div class="small-box bg-success">
-                        <div class="inner">
-                            <h3><?php echo $counts['approved_count']; ?></h3>
-                            <p>Approved Reviews</p>
-                        </div>
-                        <div class="icon">
-                            <i class="fas fa-check-circle"></i>
-                        </div>
-                        <a href="?filter=approved" class="small-box-footer">View <i class="fas fa-arrow-circle-right"></i></a>
-                    </div>
-                </div>
-                <div class="col-md-3">
-                    <div class="small-box bg-danger">
-                        <div class="inner">
-                            <h3><?php echo $counts['rejected_count']; ?></h3>
-                            <p>Rejected Reviews</p>
-                        </div>
-                        <div class="icon">
-                            <i class="fas fa-times-circle"></i>
-                        </div>
-                        <a href="?filter=rejected" class="small-box-footer">View <i class="fas fa-arrow-circle-right"></i></a>
-                    </div>
-                </div>
-                <div class="col-md-3">
-                    <div class="small-box bg-info">
-                        <div class="inner">
-                            <h3><?php echo $counts['total_count']; ?></h3>
-                            <p>Total Reviews</p>
-                        </div>
-                        <div class="icon">
-                            <i class="fas fa-comments"></i>
-                        </div>
-                        <a href="?filter=all" class="small-box-footer">View All <i class="fas fa-arrow-circle-right"></i></a>
-                    </div>
-                </div>
+            <div class="row">
+                <div class="col-md-4 mb-3"><div class="nv-stat"><div class="nv-stat__icon nv-stat__icon--navy"><i class="fas fa-comments"></i></div>
+                    <div><div class="nv-stat__label">Total ulasan</div><div class="nv-stat__value"><?php echo $total; ?></div></div></div></div>
+                <div class="col-md-4 mb-3"><div class="nv-stat"><div class="nv-stat__icon nv-stat__icon--amber"><i class="fas fa-star"></i></div>
+                    <div><div class="nv-stat__label">Rata-rata rating</div><div class="nv-stat__value"><?php echo $total ? e(number_format($avg, 1)) : '-'; ?></div></div></div></div>
+                <div class="col-md-4 mb-3"><div class="nv-stat"><div class="nv-stat__icon nv-stat__icon--sky"><i class="fas fa-user-secret"></i></div>
+                    <div><div class="nv-stat__label">Ditulis anonim</div><div class="nv-stat__value"><?php echo $anon; ?></div></div></div></div>
             </div>
 
-            <!-- Testimonials Table -->
             <div class="card">
-                <div class="card-header">
-                    <h3 class="card-title">
-                        <?php 
-                            if ($filter === 'pending') echo 'Pending Reviews';
-                            else if ($filter === 'approved') echo 'Approved Reviews';
-                            else if ($filter === 'rejected') echo 'Rejected Reviews';
-                            else echo 'All Reviews';
-                        ?>
-                        (<?php echo count($testimonials); ?>)
-                    </h3>
-                </div>
                 <div class="card-body">
-                    <?php if (count($testimonials) === 0): ?>
-                        <div class="alert alert-info">
-                            <i class="fas fa-info-circle"></i> No testimonials found.
-                        </div>
+                    <?php if (!$items): ?>
+                        <div class="nv-empty"><i class="fas fa-comment-slash"></i>Belum ada ulasan dari pelanggan.</div>
                     <?php else: ?>
-                        <div class="table-responsive">
-                            <table class="table table-bordered table-hover">
-                                <thead>
-                                    <tr>
-                                        <th width="5%">ID</th>
-                                        <th width="15%">Customer</th>
-                                        <th width="10%">Rating</th>
-                                        <th width="35%">Review</th>
-                                        <th width="10%">Order</th>
-                                        <th width="10%">Status</th>
-                                        <th width="10%">Date</th>
-                                        <th width="15%">Actions</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    <?php foreach ($testimonials as $testimonial): ?>
-                                        <tr>
-                                            <td><?php echo $testimonial['testimonial_id']; ?></td>
-                                            <td>
-                                                <strong><?php echo htmlspecialchars($testimonial['full_name']); ?></strong><br>
-                                                <small class="text-muted"><?php echo htmlspecialchars($testimonial['email']); ?></small>
-                                            </td>
-                                            <td>
-                                                <?php
-                                                    for ($i = 1; $i <= 5; $i++) {
-                                                        if ($i <= $testimonial['rating']) {
-                                                            echo '<i class="fas fa-star text-warning"></i>';
-                                                        } else {
-                                                            echo '<i class="far fa-star text-warning"></i>';
-                                                        }
-                                                    }
-                                                ?>
-                                            </td>
-                                            <td><?php echo nl2br(htmlspecialchars($testimonial['message'])); ?></td>
-                                            <td>
-                                                <?php if ($testimonial['order_number']): ?>
-                                                    <span class="badge badge-info"><?php echo $testimonial['order_number']; ?></span>
-                                                <?php else: ?>
-                                                    <span class="text-muted">-</span>
-                                                <?php endif; ?>
-                                            </td>
-                                            <td>
-                                                <?php
-                                                    $status_badges = [
-                                                        'pending' => 'warning',
-                                                        'approved' => 'success',
-                                                        'rejected' => 'danger'
-                                                    ];
-                                                    $badge = $status_badges[$testimonial['status']];
-                                                ?>
-                                                <span class="badge badge-<?php echo $badge; ?>">
-                                                    <?php echo ucfirst($testimonial['status']); ?>
-                                                </span>
-                                            </td>
-                                            <td>
-                                                <small><?php echo date('d M Y', strtotime($testimonial['created_at'])); ?></small>
-                                            </td>
-                                            <td>
-                                                <?php if ($testimonial['status'] === 'pending'): ?>
-                                                    <form method="POST" style="display: inline;">
-                                                        <input type="hidden" name="testimonial_id" value="<?php echo $testimonial['testimonial_id']; ?>">
-                                                        <input type="hidden" name="action" value="approve">
-                                                        <button type="submit" class="btn btn-sm btn-success" title="Approve">
-                                                            <i class="fas fa-check"></i>
-                                                        </button>
-                                                    </form>
-                                                    <form method="POST" style="display: inline;">
-                                                        <input type="hidden" name="testimonial_id" value="<?php echo $testimonial['testimonial_id']; ?>">
-                                                        <input type="hidden" name="action" value="reject">
-                                                        <button type="submit" class="btn btn-sm btn-warning" title="Reject">
-                                                            <i class="fas fa-times"></i>
-                                                        </button>
-                                                    </form>
-                                                <?php elseif ($testimonial['status'] === 'approved'): ?>
-                                                    <form method="POST" style="display: inline;">
-                                                        <input type="hidden" name="testimonial_id" value="<?php echo $testimonial['testimonial_id']; ?>">
-                                                        <input type="hidden" name="action" value="reject">
-                                                        <button type="submit" class="btn btn-sm btn-warning" title="Reject">
-                                                            <i class="fas fa-times"></i>
-                                                        </button>
-                                                    </form>
-                                                <?php elseif ($testimonial['status'] === 'rejected'): ?>
-                                                    <form method="POST" style="display: inline;">
-                                                        <input type="hidden" name="testimonial_id" value="<?php echo $testimonial['testimonial_id']; ?>">
-                                                        <input type="hidden" name="action" value="approve">
-                                                        <button type="submit" class="btn btn-sm btn-success" title="Approve">
-                                                            <i class="fas fa-check"></i>
-                                                        </button>
-                                                    </form>
-                                                <?php endif; ?>
-                                                
-                                                <form method="POST" style="display: inline;" onsubmit="return confirm('Are you sure you want to delete this testimonial?');">
-                                                    <input type="hidden" name="testimonial_id" value="<?php echo $testimonial['testimonial_id']; ?>">
-                                                    <input type="hidden" name="action" value="delete">
-                                                    <button type="submit" class="btn btn-sm btn-danger" title="Delete">
-                                                        <i class="fas fa-trash"></i>
-                                                    </button>
-                                                </form>
-                                            </td>
-                                        </tr>
-                                    <?php endforeach; ?>
-                                </tbody>
-                            </table>
-                        </div>
+                    <table id="testimonialsTable" class="table table-hover" style="width:100%">
+                        <thead>
+                            <tr>
+                                <th>Pelanggan</th><th>Buku</th><th>Rating</th><th>Ulasan</th><th>Tanggal</th>
+                                <th class="text-right" data-orderable="false">Aksi</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                        <?php foreach ($items as $t): ?>
+                            <tr>
+                                <td>
+                                    <?php if (!empty($t['is_anonymous'])): ?>
+                                        <strong>Anonim</strong>
+                                    <?php else: ?>
+                                        <strong><?php echo e($t['full_name'] ?: 'Pelanggan'); ?></strong>
+                                        <?php if ($t['username']): ?><br><small class="text-muted">@<?php echo e($t['username']); ?></small><?php endif; ?>
+                                    <?php endif; ?>
+                                </td>
+                                <td>
+                                    <?php echo e($t['book_title'] ?: '-'); ?>
+                                    <?php if ($t['order_number']): ?><br><small><a href="orders-detail.php?id=<?php echo (int) $t['order_id']; ?>"><?php echo e($t['order_number']); ?></a></small><?php endif; ?>
+                                </td>
+                                <td data-order="<?php echo (int) $t['rating']; ?>"><?php echo stars_html($t['rating']); ?></td>
+                                <td style="min-width:240px"><p class="nv-quote"><?php echo e($t['message']); ?></p></td>
+                                <td data-order="<?php echo (int) strtotime($t['created_at']); ?>"><?php echo e(formatTanggal($t['created_at'])); ?></td>
+                                <td>
+                                    <div class="nv-actions">
+                                        <form method="post" onsubmit="return confirm('Hapus ulasan ini?');">
+                                            <?php echo csrf_field(); ?>
+                                            <input type="hidden" name="delete_id" value="<?php echo (int) $t['testimonial_id']; ?>">
+                                            <button type="submit" class="btn btn-sm btn-outline-danger" title="Hapus"><i class="fas fa-trash"></i></button>
+                                        </form>
+                                    </div>
+                                </td>
+                            </tr>
+                        <?php endforeach; ?>
+                        </tbody>
+                    </table>
                     <?php endif; ?>
                 </div>
             </div>
-
         </div>
     </section>
 </div>
 
-<?php include 'includes/footer.php'; ?>
+<?php
+ob_start();
+?>
+<script>
+$(function () {
+    if ($('#testimonialsTable').length) { $('#testimonialsTable').DataTable({ autoWidth: false, order: [[4, 'desc']] }); }
+});
+</script>
+<?php
+$extra_js = ob_get_clean();
+include 'includes/footer.php';
