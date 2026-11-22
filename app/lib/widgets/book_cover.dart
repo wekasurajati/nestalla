@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../core/config/api_config.dart';
 import '../core/theme/app_colors.dart';
 import '../core/theme/app_radius.dart';
 
@@ -28,12 +29,12 @@ class BookCover extends StatelessWidget {
         borderRadius: AppRadius.border,
         boxShadow: showShadow
             ? [
-                BoxShadow(
-                  color: AppColors.dark.withValues(alpha: 0.12),
-                  blurRadius: 16,
-                  offset: const Offset(0, 6),
-                ),
-              ]
+          BoxShadow(
+            color: AppColors.dark.withValues(alpha: 0.12),
+            blurRadius: 16,
+            offset: const Offset(0, 6),
+          ),
+        ]
             : null,
       ),
       child: ClipRRect(borderRadius: AppRadius.border, child: _buildImage()),
@@ -46,21 +47,33 @@ class BookCover extends StatelessWidget {
   }
 
   Widget _buildImage() {
+    if (image.isEmpty) {
+      return const _CoverPlaceholder();
+    }
+    // Alamat lengkap
     if (image.startsWith('http')) {
-      return Image.network(
-        image,
-        fit: fit,
-        errorBuilder: (_, _, _) => const _CoverPlaceholder(),
-      );
+      return _network(image);
     }
-    if (image.isNotEmpty) {
-      return Image.asset(
-        image,
-        fit: fit,
-        errorBuilder: (_, _, _) => const _CoverPlaceholder(),
-      );
+    // Nama file dari server (tanpa garis miring): ambil dari backend/image/covers
+    if (!image.contains('/')) {
+      return _network(ApiConfig.bookCoverUrl(image));
     }
-    return const _CoverPlaceholder();
+    // Aset di dalam aplikasi (data contoh)
+    return Image.asset(
+      image,
+      fit: fit,
+      errorBuilder: (_, _, _) => const _CoverPlaceholder(),
+    );
+  }
+
+  Widget _network(String url) {
+    return Image.network(
+      url,
+      fit: fit,
+      errorBuilder: (_, _, _) => const _CoverPlaceholder(),
+      loadingBuilder: (context, child, progress) =>
+      progress == null ? child : const _CoverPlaceholder(),
+    );
   }
 }
 
