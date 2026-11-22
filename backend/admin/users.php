@@ -4,109 +4,84 @@ require_once 'includes/auth.php';
 $database = new Database();
 $conn = $database->getConnection();
 
-// Get all users (customers only)
-$query = "SELECT * FROM users WHERE role = 'customer' ORDER BY created_at DESC";
-$stmt = $conn->prepare($query);
-$stmt->execute();
-$users = $stmt->fetchAll(PDO::FETCH_ASSOC);
+$users = db_rows(
+    $conn,
+    "SELECT u.user_id, u.username, u.full_name, u.email, u.phone, u.created_at,
+            (SELECT COUNT(*) FROM orders o WHERE o.user_id = u.user_id) AS order_count
+     FROM users u WHERE u.role = 'customer' ORDER BY u.created_at DESC"
+);
 
-$page_title = "Users Management";
+$page_title = 'Pengguna';
 include 'includes/header.php';
 include 'includes/sidebar.php';
 ?>
 
-<!-- Content Wrapper -->
 <div class="content-wrapper">
-    <!-- Content Header -->
     <section class="content-header">
         <div class="container-fluid">
-            <div class="row mb-2">
-                <div class="col-sm-6">
-                    <h1><i class="fas fa-users"></i> Users Management</h1>
-                </div>
-                <div class="col-sm-6">
-                    <ol class="breadcrumb float-sm-right">
-                        <li class="breadcrumb-item"><a href="index.php">Home</a></li>
-                        <li class="breadcrumb-item active">Users</li>
-                    </ol>
+            <div class="nv-pagehead">
+                <div>
+                    <h1><i class="fas fa-users"></i>Pengguna</h1>
+                    <p>Daftar pelanggan yang terdaftar di aplikasi.</p>
                 </div>
             </div>
         </div>
     </section>
 
-    <!-- Main content -->
     <section class="content">
         <div class="container-fluid">
-            
+            <?php echo flash_render(); ?>
             <div class="card">
-                <div class="card-header">
-                    <h3 class="card-title">All Customers</h3>
-                </div>
+                <div class="card-header"><h3 class="card-title"><?php echo count($users); ?> pelanggan</h3></div>
                 <div class="card-body">
-                    <table id="usersTable" class="table table-bordered table-striped datatable">
+                    <table id="usersTable" class="table table-hover" style="width:100%">
                         <thead>
                             <tr>
-                                <th>ID</th>
-                                <th>Name</th>
-                                <th>Email</th>
-                                <th>Phone</th>
-                                <th>Registered</th>
-                                <th>Orders</th>
-                                <th>Actions</th>
+                                <th>Pelanggan</th><th>Email</th><th>Telepon</th><th>Terdaftar</th><th>Pesanan</th>
+                                <th class="text-right" data-orderable="false">Aksi</th>
                             </tr>
                         </thead>
                         <tbody>
-                            <?php foreach($users as $user): ?>
-                            <?php
-                            // Get user's order count
-                            $query_orders = "SELECT COUNT(*) as total FROM orders WHERE user_id = :user_id";
-                            $stmt_orders = $conn->prepare($query_orders);
-                            $stmt_orders->bindParam(':user_id', $user['user_id']);
-                            $stmt_orders->execute();
-                            $order_count = $stmt_orders->fetch(PDO::FETCH_ASSOC)['total'];
+                        <?php foreach ($users as $u):
+                            $name = $u['full_name'] ?: $u['username'];
+                            $initial = strtoupper(function_exists('mb_substr') ? mb_substr($name, 0, 1) : substr($name, 0, 1));
                             ?>
                             <tr>
-                                <td><?php echo $user['user_id']; ?></td>
                                 <td>
-                                    <strong><?php echo htmlspecialchars($user['full_name']); ?></strong>
-                                    <br><small class="text-muted">@<?php echo htmlspecialchars($user['username']); ?></small>
+                                    <div class="d-flex align-items-center">
+                                        <span class="nv-avatar-sm mr-2"><?php echo e($initial); ?></span>
+                                        <div><strong><?php echo e($name); ?></strong><br><small class="text-muted">@<?php echo e($u['username']); ?></small></div>
+                                    </div>
                                 </td>
-                                <td>
-                                    <i class="fas fa-envelope"></i>
-                                    <?php echo htmlspecialchars($user['email']); ?>
+                                <td><?php echo e($u['email']); ?></td>
+                                <td><?php echo $u['phone'] ? e($u['phone']) : '<span class="text-muted">-</span>'; ?></td>
+                                <td data-order="<?php echo (int) strtotime($u['created_at']); ?>"><?php echo e(formatTanggal($u['created_at'])); ?></td>
+                                <td data-order="<?php echo (int) $u['order_count']; ?>">
+                                    <?php echo (int) $u['order_count'] > 0 ? badge('info', $u['order_count'] . ' pesanan') : badge('muted', 'Belum ada'); ?>
                                 </td>
-                                <td>
-                                    <?php if($user['phone']): ?>
-                                        <i class="fas fa-phone"></i>
-                                        <?php echo htmlspecialchars($user['phone']); ?>
-                                    <?php else: ?>
-                                        <span class="text-muted">-</span>
+                                <td class="text-right">
+                                    <?php if ((int) $u['order_count'] > 0): ?>
+                                        <a href="orders.php?q=<?php echo rawurlencode($u['email']); ?>" class="btn btn-sm btn-light-nv"><i class="fas fa-receipt"></i> Lihat pesanan</a>
                                     <?php endif; ?>
-                                </td>
-                                <td><?php echo formatTanggal($user['created_at']); ?></td>
-                                <td>
-                                    <?php if($order_count > 0): ?>
-                                        <span class="badge badge-success"><?php echo $order_count; ?> orders</span>
-                                    <?php else: ?>
-                                        <span class="badge badge-secondary">No orders</span>
-                                    <?php endif; ?>
-                                </td>
-                                <td>
-                                    <a href="users-detail.php?id=<?php echo $user['user_id']; ?>" 
-                                       class="btn btn-info btn-sm"
-                                       title="View Details">
-                                        <i class="fas fa-eye"></i>
-                                    </a>
                                 </td>
                             </tr>
-                            <?php endforeach; ?>
+                        <?php endforeach; ?>
                         </tbody>
                     </table>
                 </div>
             </div>
-
         </div>
     </section>
 </div>
 
-<?php include 'includes/footer.php'; ?>
+<?php
+ob_start();
+?>
+<script>
+$(function () {
+    $('#usersTable').DataTable({ autoWidth: false, order: [[3, 'desc']] });
+});
+</script>
+<?php
+$extra_js = ob_get_clean();
+include 'includes/footer.php';
