@@ -57,11 +57,14 @@ function payment_method_label($m)
     return $map[$m] ?? ucfirst((string) $m);
 }
 
-// Ubah status pesanan. Mengembalikan [berhasil(bool), pesan(string)].
-function admin_update_order_status(PDO $conn, $orderId, $newStatus, $sendEmail)
+// Ubah status pesanan.
+// Mengembalikan [jenisPesan, pesan, tugasSesudahRespons|null].
+// jenisPesan: success | info | warning | error. Email dikirim SESUDAH halaman
+// selesai dimuat (lihat admin_redirect_then), supaya admin tidak menunggu SMTP.
+function admin_update_order_status(PDO $conn, $orderId, $newStatus, $sendEmail, $expectedStatus = '')
 {
     if (!in_array($newStatus, order_status_values($conn), true)) {
-        return [false, 'Status tidak valid.'];
+        return ['error', 'Status tidak valid.', null];
     }
 
     $st = $conn->prepare(
@@ -72,29 +75,70 @@ function admin_update_order_status(PDO $conn, $orderId, $newStatus, $sendEmail)
     $st->execute([':id' => $orderId]);
     $order = $st->fetch(PDO::FETCH_ASSOC);
     if (!$order) {
-        return [false, 'Pesanan tidak ditemukan.'];
+        return ['error', 'Pesanan tidak ditemukan.', null];
     }
-    if ($order['status'] === $newStatus) {
-        return [true, 'Status pesanan tidak berubah.'];
+    $no = $order['order_number'];
+    $old = $order['status'];
+
+    // Halaman yang dibuka sudah usang: status diubah pihak lain (aplikasi, pembayaran, admin lain)
+    if ($expectedStatus !== '' && $old !== $expectedStatus && $old !== $newStatus) {
+        return ['warning', 'Status pesanan ' . $no . ' sudah berubah menjadi "' . status_label($old)
+            . '" sejak halaman ini dibuka (bisa dari aplikasi, pembayaran, atau admin lain). '
+            . 'Tidak ada yang diubah. Periksa status terbaru, lalu coba lagi.', null];
+    }
+    if ($old === $newStatus) {
+        return ['info', 'Pesanan ' . $no . ' sudah berstatus "' . status_label($old) . '", tidak ada perubahan.', null];
     }
 
-    $up = $conn->prepare('UPDATE orders SET status = :s WHERE order_id = :id');
-    $up->execute([':s' => $newStatus, ':id' => $orderId]);
-    $msg = 'Status pesanan ' . $order['order_number'] . ' diubah menjadi ' . status_label($newStatus) . '.';
+    // Ubah hanya bila status masih sama dengan yang tadi dibaca (anti tabrakan)
+    $up = $conn->prepare('UPDATE orders SET status = :s WHERE order_id = :id AND status = :old');
+    $up->execute([':s' => $newStatus, ':id' => $orderId, ':old' => $old]);
+    if ($up->rowCount() === 0) {
+        return ['info', 'Status pesanan ' . $no . ' baru saja diubah oleh permintaan lain. Muat ulang halaman untuk melihat status terbaru.', null];
+    }
 
-    if ($sendEmail && !empty($order['email'])) {
-        $file = __DIR__ . '/../../config/email.php';
-        if (is_file($file)) {
+    $msg = 'Status pesanan ' . $no . ' diubah dari "' . status_label($old) . '" menjadi "' . status_label($newStatus) . '".';
+
+    $after = null;
+    $file = __DIR__ . '/../../config/email.php';
+    if ($sendEmail && !empty($order['email']) && is_file($file)) {
+        $msg .= ' Email pemberitahuan dikirim di latar belakang.';
+        $to = $order['email'];
+        $name = $order['full_name'];
+        $after = function () use ($file, $to, $name, $no, $newStatus) {
             try {
                 require_once $file;
                 $svc = new EmailService();
-                $svc->sendOrderStatusUpdate($order['email'], $order['full_name'], $order['order_number'], $newStatus);
-                $msg .= ' Email pemberitahuan terkirim.';
+                $svc->sendOrderStatusUpdate($to, $name, $no, $newStatus);
             } catch (Throwable $ex) {
-                error_log('[admin] gagal kirim email status: ' . $ex->getMessage());
-                $msg .= ' (Email pemberitahuan gagal dikirim.)';
+                error_log('[admin] gagal kirim email status ' . $no . ': ' . $ex->getMessage());
             }
-        }
+        };
     }
-    return [true, $msg];
+    return ['success', $msg, $after];
+}
+
+// Alihkan ke halaman lain, lalu (opsional) jalankan tugas lambat setelah respons terkirim.
+function admin_redirect_then($url, $after = null)
+{
+    header('Location: ' . $url);
+    if ($after === null) {
+        exit;
+    }
+    ignore_user_abort(true);
+    @set_time_limit(120);
+    if (session_status() === PHP_SESSION_ACTIVE) {
+        session_write_close(); // lepaskan kunci sesi agar halaman berikutnya tidak menunggu
+    }
+    header('Connection: close');
+    header('Content-Length: 0');
+    while (ob_get_level() > 0) {
+        @ob_end_flush();
+    }
+    flush();
+    if (function_exists('fastcgi_finish_request')) {
+        fastcgi_finish_request();
+    }
+    $after();
+    exit;
 }
