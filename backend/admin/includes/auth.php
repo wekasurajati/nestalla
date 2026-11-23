@@ -64,6 +64,10 @@ function csrf_valid()
 // ---------- Pesan kilat (flash) ----------
 function flash($type, $message)
 {
+    // Pesan "info" tidak boleh menimpa pesan sukses yang belum sempat dibaca
+    if ($type === 'info' && !empty($_SESSION['flash']) && $_SESSION['flash']['type'] === 'success') {
+        return;
+    }
     $_SESSION['flash'] = ['type' => $type, 'message' => $message];
 }
 
@@ -72,8 +76,13 @@ function flash_render()
     $out = '';
     if (!empty($_SESSION['flash'])) {
         $f = $_SESSION['flash'];
-        $cls = $f['type'] === 'success' ? 'alert-success' : 'alert-danger';
-        $icon = $f['type'] === 'success' ? 'fa-check-circle' : 'fa-exclamation-circle';
+        $styles = [
+            'success' => ['alert-success', 'fa-check-circle'],
+            'info'    => ['alert-info', 'fa-info-circle'],
+            'warning' => ['alert-warning', 'fa-exclamation-triangle'],
+            'error'   => ['alert-danger', 'fa-exclamation-circle'],
+        ];
+        list($cls, $icon) = $styles[$f['type']] ?? $styles['error'];
         $out = '<div class="alert ' . $cls . ' alert-dismissible"><button type="button" class="close" data-dismiss="alert">&times;</button>'
              . '<i class="fas ' . $icon . ' mr-1"></i> ' . e($f['message']) . '</div>';
         unset($_SESSION['flash']);

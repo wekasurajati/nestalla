@@ -7,19 +7,20 @@ $conn = $database->getConnection();
 
 // ---------- Ubah status ----------
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_status'])) {
+    $after = null;
     if (!csrf_valid()) {
         flash('error', 'Sesi tidak valid. Muat ulang halaman lalu coba lagi.');
     } else {
-        list($ok, $msg) = admin_update_order_status(
+        list($kind, $msg, $after) = admin_update_order_status(
             $conn,
             (int) ($_POST['order_id'] ?? 0),
             (string) ($_POST['status'] ?? ''),
-            !empty($_POST['send_email'])
+            !empty($_POST['send_email']),
+            (string) ($_POST['expected_status'] ?? '')
         );
-        flash($ok ? 'success' : 'error', $msg);
+        flash($kind, $msg);
     }
-    header('Location: orders.php');
-    exit;
+    admin_redirect_then('orders.php', $after);
 }
 
 // ---------- Data ----------
@@ -131,7 +132,7 @@ include 'includes/sidebar.php';
 
 <div class="modal fade" id="statusModal" tabindex="-1" role="dialog" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
-        <form method="post" class="modal-content" style="border:0;border-radius:16px">
+        <form method="post" id="statusForm" class="modal-content" style="border:0;border-radius:16px">
             <div class="modal-header" style="border-bottom:1px solid #E6EBF3">
                 <h5 class="modal-title font-weight-bold">Ubah status pesanan</h5>
                 <button type="button" class="close" data-dismiss="modal" aria-label="Tutup">&times;</button>
@@ -140,6 +141,7 @@ include 'includes/sidebar.php';
                 <?php echo csrf_field(); ?>
                 <input type="hidden" name="update_status" value="1">
                 <input type="hidden" name="order_id" id="m_order_id">
+                <input type="hidden" name="expected_status" id="m_expected">
                 <p class="mb-3">Pesanan <strong id="m_number"></strong></p>
                 <div class="form-group">
                     <label for="m_status">Status baru</label>
@@ -152,11 +154,12 @@ include 'includes/sidebar.php';
                 <div class="custom-control custom-checkbox">
                     <input type="checkbox" class="custom-control-input" id="m_email" name="send_email" value="1" checked>
                     <label class="custom-control-label" for="m_email">Kirim email pemberitahuan ke pelanggan</label>
+                    <small class="form-text text-muted">Email dikirim di latar belakang, jadi tidak memperlambat penyimpanan.</small>
                 </div>
             </div>
             <div class="modal-footer" style="border-top:1px solid #E6EBF3">
                 <button type="button" class="btn btn-light-nv" data-dismiss="modal">Batal</button>
-                <button type="submit" class="btn btn-primary">Simpan</button>
+                <button type="submit" class="btn btn-primary" id="m_save" disabled>Simpan</button>
             </div>
         </form>
     </div>
@@ -177,11 +180,24 @@ $(function () {
     $('#statusFilter').on('change', function () {
         table.column(4).search(this.value ? '^' + $.fn.dataTable.util.escapeRegex(this.value) + '$' : '', true, false).draw();
     });
+    var saveHtml = $('#m_save').html();
+    function syncSave() {
+        // Tombol Simpan aktif hanya bila status dipilih berbeda dari status saat ini
+        $('#m_save').prop('disabled', $('#m_status').val() === $('#m_expected').val());
+    }
     $('#statusModal').on('show.bs.modal', function (ev) {
         var b = $(ev.relatedTarget);
         $('#m_order_id').val(b.data('id'));
         $('#m_number').text(b.data('number'));
+        $('#m_expected').val(b.data('status'));
         $('#m_status').val(b.data('status'));
+        $('#m_save').html(saveHtml);
+        syncSave();
+    });
+    $('#m_status').on('change', syncSave);
+    $('#statusForm').on('submit', function () {
+        // Cegah klik ganda selagi permintaan diproses
+        $('#m_save').prop('disabled', true).html('<i class="fas fa-spinner fa-spin"></i> Menyimpan…');
     });
 });
 </script>
