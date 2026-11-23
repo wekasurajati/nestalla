@@ -189,16 +189,15 @@ if (isset($_POST['update_status'])) {
 //   POST orders.php?action=cancel   body: {"order_id": 1}
 //   POST orders.php?action=confirm  body: {"order_id": 1}
 // ========================================
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_GET['action'])) {
+if ($_SERVER['REQUEST_METHOD'] === 'POST'
+    && isset($_GET['action'])
+    && in_array($_GET['action'], ['cancel', 'confirm'], true)) {
     $user_id = getAuthUserId();
     if (!$user_id) {
         sendError('Please login first', 401);
     }
 
     $action = $_GET['action'];
-    if (!in_array($action, ['cancel', 'confirm'], true)) {
-        sendError('Action tidak dikenal', 400);
-    }
 
     $body = json_decode(file_get_contents('php://input'), true);
     $order_id = intval($body['order_id'] ?? 0);
