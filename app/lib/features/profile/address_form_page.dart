@@ -11,7 +11,6 @@ import '../../../core/theme/app_radius.dart';
 import '../../../models/address.dart';
 import '../../../providers/auth_provider.dart';
 import '../../../repositories/region_repository.dart';
-import '../../../widgets/back_button.dart';
 import 'map_picker_page.dart';
 
 class AddressFormPage extends StatefulWidget {
@@ -920,6 +919,13 @@ class _AddressFormPageState extends State<AddressFormPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.background,
+      appBar: AppBar(
+        centerTitle: true,
+        title: Text(
+          widget.address == null ? 'Tambah Alamat' : 'Edit Alamat',
+          style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+        ),
+      ),
       body: SafeArea(
         child: Center(
           child: ConstrainedBox(
@@ -927,26 +933,6 @@ class _AddressFormPageState extends State<AddressFormPage> {
             child: ListView(
               padding: const EdgeInsets.all(16),
               children: [
-                Row(
-                  children: [
-                    AppBackButton(onPressed: () => context.pop()),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Center(
-                        child: Text(
-                          widget.address == null
-                              ? 'Tambah Alamat'
-                              : 'Edit Alamat',
-                          style: TextStyle(
-                            fontSize: 20,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 52),
-                  ],
-                ),
                 const SizedBox(height: 32),
                 Form(
                   key: _formKey,

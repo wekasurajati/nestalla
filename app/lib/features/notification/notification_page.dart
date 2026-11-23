@@ -3,7 +3,6 @@ import 'package:provider/provider.dart';
 
 import '../../core/theme/app_colors.dart';
 import '../../providers/notification_provider.dart';
-import '../../widgets/header_action_buttons.dart';
 import 'widgets/notification_tile.dart';
 
 class NotificationPage extends StatelessWidget {
@@ -24,10 +23,6 @@ class NotificationPage extends StatelessWidget {
           'Notifikasi',
           style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
         ),
-        actions: const [
-          HeaderActionButtons(),
-          SizedBox(width: 16),
-        ],
       ),
       body: SafeArea(
         child: showLoader

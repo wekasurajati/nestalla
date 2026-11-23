@@ -31,6 +31,12 @@ class _CartPageState extends State<CartPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.background,
+        appBar: AppBar(
+          title: const Text(
+            'Keranjang',
+            style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+          ),
+        ),
       body: SafeArea(
         child: FutureBuilder<List<Book>>(
           future: _booksFuture,
@@ -52,7 +58,6 @@ class _CartPageState extends State<CartPage> {
             if (cart.items.isEmpty) {
               return Column(
                 children: [
-                  _Header(onBack: () => context.pop()),
                   const Expanded(child: _EmptyCartView()),
                 ],
               );
@@ -60,7 +65,6 @@ class _CartPageState extends State<CartPage> {
 
             return Column(
               children: [
-                _Header(onBack: () => context.pop()),
                 _ControlBar(
                   cart: cart,
                   onRemoveSelected: () => _confirmRemoveSelected(cart),
@@ -102,38 +106,6 @@ class _CartPageState extends State<CartPage> {
     if (ok == true) {
       await cart.removeSelected();
     }
-  }
-}
-
-class _Header extends StatelessWidget {
-  final VoidCallback onBack;
-
-  const _Header({required this.onBack});
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      children: [
-        Padding(
-          padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
-          child: Row(
-            children: [
-              AppBackButton(onPressed: onBack),
-              const SizedBox(width: 12),
-              const Text(
-                'Keranjang',
-                style: TextStyle(
-                  fontSize: 20,
-                  fontWeight: FontWeight.bold,
-                  color: AppColors.dark,
-                ),
-              ),
-            ],
-          ),
-        ),
-        const Divider(height: 1, color: AppColors.grey),
-      ],
-    );
   }
 }
 

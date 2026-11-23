@@ -1,8 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:go_router/go_router.dart';
 
 import '../../../core/theme/app_colors.dart';
-import '../../../widgets/back_button.dart';
 
 class FaqPage extends StatefulWidget {
   const FaqPage({super.key});
@@ -141,35 +139,23 @@ class _FaqPageState extends State<FaqPage> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: AppColors.background,
-      body: SafeArea(
-        child: Center(
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 500),
-            child: ListView(
-              padding: const EdgeInsets.all(16),
-              children: [
-                Row(
-                  children: [
-                    AppBackButton(onPressed: () => context.pop()),
-                    const SizedBox(width: 12),
-                    const Expanded(
-                      child: Center(
-                        child: Text(
-                          'Pertanyaan Umum',
-                          style: TextStyle(
-                            fontSize: 20,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 52),
-                  ],
-                ),
-                const SizedBox(height: 24),
-                ...List.generate(_faqs.length, _buildFaqItem),
+      return Scaffold(
+        backgroundColor: AppColors.background,
+        appBar: AppBar(
+          centerTitle: true,
+          title: const Text(
+            'Pertanyaan Umum',
+            style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+          ),
+        ),
+        body: SafeArea(
+          child: Center(
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 500),
+              child: ListView(
+                padding: const EdgeInsets.all(16),
+                children: [
+                  ...List.generate(_faqs.length, _buildFaqItem),
               ],
             ),
           ),

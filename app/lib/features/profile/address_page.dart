@@ -9,7 +9,6 @@ import '../../../core/theme/app_radius.dart';
 import '../../../providers/address_provider.dart';
 import '../../../providers/auth_provider.dart';
 import '../../../widgets/address_card.dart';
-import '../../../widgets/back_button.dart';
 
 class AddressPage extends StatefulWidget {
   const AddressPage({super.key});
@@ -45,36 +44,24 @@ class _AddressPageState extends State<AddressPage> {
     final addresses = provider.addresses;
     final error = provider.error;
 
-    return Scaffold(
-      backgroundColor: AppColors.background,
-      body: SafeArea(
-        child: Center(
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 500),
-            child: Padding(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                children: [
-                  const SizedBox(height: 16),
-                  Row(
-                    children: [
-                      AppBackButton(onPressed: () => context.pop()),
-                      const SizedBox(width: 12),
-                      const Expanded(
-                        child: Center(
-                          child: Text(
-                            'Alamat Saya',
-                            style: TextStyle(
-                              fontSize: 20,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: 52),
-                    ],
-                  ),
-                  const SizedBox(height: 24),
+      return Scaffold(
+        backgroundColor: AppColors.background,
+        appBar: AppBar(
+          centerTitle: true,
+          title: const Text(
+            'Alamat Saya',
+            style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+          ),
+        ),
+        body: SafeArea(
+          child: Center(
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 500),
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  children: [
+                    const SizedBox(height: 24),
                   if (error != null && error.isNotEmpty) ...[
                     SizedBox(
                       width: double.infinity,

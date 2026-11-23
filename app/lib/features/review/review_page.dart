@@ -128,7 +128,7 @@ class _ReviewPageState extends State<ReviewPage> {
             centerTitle: true,
             title: const Text(
               'Ulasan Produk',
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+              style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
             ),
           ),
           body: loading
