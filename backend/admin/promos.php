@@ -1,185 +1,119 @@
 <?php
 require_once 'includes/auth.php';
+require_once 'includes/promos_lib.php';
 
 $database = new Database();
 $conn = $database->getConnection();
+$conn->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 
-$success = '';
-$error = '';
-
-// Handle Delete
-if(isset($_GET['delete'])) {
-    $promo_id = $_GET['delete'];
-    
-    try {
-        $query = "DELETE FROM promo_codes WHERE promo_id = :id";
-        $stmt = $conn->prepare($query);
-        $stmt->bindParam(':id', $promo_id);
-        
-        if($stmt->execute()) {
-            $success = 'Promo code deleted successfully!';
+// ---------- Aksi (POST + CSRF) ----------
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['promo_action'])) {
+    if (!csrf_valid()) {
+        flash('error', 'Sesi tidak valid. Muat ulang halaman lalu coba lagi.');
+    } else {
+        $id = (int) ($_POST['promo_id'] ?? 0);
+        try {
+            if ($_POST['promo_action'] === 'toggle') {
+                $conn->prepare('UPDATE promo_codes SET is_active = 1 - is_active WHERE promo_id = :id')->execute([':id' => $id]);
+                flash('success', 'Status promo diperbarui.');
+            } elseif ($_POST['promo_action'] === 'delete') {
+                $conn->prepare('DELETE FROM promo_codes WHERE promo_id = :id')->execute([':id' => $id]);
+                flash('success', 'Kode promo dihapus.');
+            }
+        } catch (PDOException $ex) {
+            error_log('[admin] promo: ' . $ex->getMessage());
+            flash('error', 'Kode promo tidak bisa dihapus karena sudah dipakai pada pesanan. Nonaktifkan saja.');
         }
-    } catch(Exception $e) {
-        $error = 'Error deleting promo: ' . $e->getMessage();
     }
+    header('Location: promos.php');
+    exit;
 }
 
-// Handle Toggle Active
-if(isset($_GET['toggle'])) {
-    $promo_id = $_GET['toggle'];
-    
-    try {
-        $query = "UPDATE promo_codes SET is_active = NOT is_active WHERE promo_id = :id";
-        $stmt = $conn->prepare($query);
-        $stmt->bindParam(':id', $promo_id);
-        
-        if($stmt->execute()) {
-            $success = 'Promo code status updated!';
-        }
-    } catch(Exception $e) {
-        $error = 'Error updating promo: ' . $e->getMessage();
-    }
-}
+$promos = db_rows($conn, 'SELECT * FROM promo_codes ORDER BY created_at DESC, promo_id DESC');
+$today = date('Y-m-d');
 
-// Get all promo codes
-$query = "SELECT * FROM promo_codes ORDER BY created_at DESC";
-$stmt = $conn->prepare($query);
-$stmt->execute();
-$promos = $stmt->fetchAll(PDO::FETCH_ASSOC);
-
-$page_title = "Promo Codes Management";
+$page_title = 'Kode Promo';
 include 'includes/header.php';
 include 'includes/sidebar.php';
 ?>
 
-<!-- Content Wrapper -->
 <div class="content-wrapper">
-    <!-- Content Header -->
     <section class="content-header">
         <div class="container-fluid">
-            <div class="row mb-2">
-                <div class="col-sm-6">
-                    <h1><i class="fas fa-tag"></i> Promo Codes Management</h1>
+            <div class="nv-pagehead">
+                <div>
+                    <h1><i class="fas fa-ticket-alt"></i>Kode Promo</h1>
+                    <p>Atur diskon dan gratis ongkir untuk pelanggan.</p>
                 </div>
-                <div class="col-sm-6">
-                    <ol class="breadcrumb float-sm-right">
-                        <li class="breadcrumb-item"><a href="index.php">Home</a></li>
-                        <li class="breadcrumb-item active">Promo Codes</li>
-                    </ol>
-                </div>
+                <a href="promos-add.php" class="btn btn-primary"><i class="fas fa-plus mr-1"></i> Tambah promo</a>
             </div>
         </div>
     </section>
 
-    <!-- Main content -->
     <section class="content">
         <div class="container-fluid">
-            
-            <?php if($success): ?>
-            <div class="alert alert-success alert-dismissible">
-                <button type="button" class="close" data-dismiss="alert">&times;</button>
-                <i class="icon fas fa-check"></i> <?php echo $success; ?>
-            </div>
-            <?php endif; ?>
-
-            <?php if($error): ?>
-            <div class="alert alert-danger alert-dismissible">
-                <button type="button" class="close" data-dismiss="alert">&times;</button>
-                <i class="icon fas fa-ban"></i> <?php echo $error; ?>
-            </div>
-            <?php endif; ?>
-
+            <?php echo flash_render(); ?>
             <div class="card">
-                <div class="card-header">
-                    <h3 class="card-title">All Promo Codes</h3>
-                    <div class="card-tools">
-                        <a href="promos-add.php" class="btn btn-success btn-sm">
-                            <i class="fas fa-plus"></i> Add New Promo
-                        </a>
-                    </div>
-                </div>
                 <div class="card-body">
-                    <table class="table table-bordered table-striped">
+                    <table id="promosTable" class="table table-hover" style="width:100%">
                         <thead>
                             <tr>
-                                <th>Code</th>
-                                <th>Type</th>
-                                <th>Value</th>
-                                <th>Description</th>
-                                <th>Valid Period</th>
-                                <th>Usage</th>
-                                <th>Status</th>
-                                <th>Actions</th>
+                                <th>Kode</th><th>Jenis</th><th>Nilai</th><th>Berlaku</th><th>Pemakaian</th><th>Status</th>
+                                <th class="text-right" data-orderable="false">Aksi</th>
                             </tr>
                         </thead>
                         <tbody>
-                            <?php foreach($promos as $promo): ?>
+                        <?php foreach ($promos as $p):
+                            $expired = $p['valid_until'] < $today;
+                            ?>
                             <tr>
+                                <td><strong><?php echo e($p['code']); ?></strong><?php if ($p['description']): ?><br><small class="text-muted"><?php echo e($p['description']); ?></small><?php endif; ?></td>
+                                <td><?php echo badge($p['type'] === 'percentage' ? 'info' : 'ok', promo_types()[$p['type']] ?? $p['type']); ?></td>
+                                <td><strong><?php echo $p['type'] === 'percentage' ? e(rtrim(rtrim(number_format((float) $p['value'], 2, ',', '.'), '0'), ',')) . '%' : e(formatRupiah($p['value'])); ?></strong></td>
+                                <td data-order="<?php echo e($p['valid_until']); ?>"><small><?php echo e(date('d/m/Y', strtotime($p['valid_from']))); ?> – <?php echo e(date('d/m/Y', strtotime($p['valid_until']))); ?></small></td>
+                                <td><?php echo (int) $p['used_count']; ?> / <?php echo (int) $p['usage_limit'] > 0 ? (int) $p['usage_limit'] : '∞'; ?></td>
                                 <td>
-                                    <strong class="text-primary"><?php echo $promo['code']; ?></strong>
+                                    <?php
+                                    if (!$p['is_active']) { echo badge('muted', 'Nonaktif'); }
+                                    elseif ($expired) { echo badge('warn', 'Kedaluwarsa'); }
+                                    else { echo badge('ok', 'Aktif'); }
+                                    ?>
                                 </td>
                                 <td>
-                                    <?php if($promo['type'] == 'percentage'): ?>
-                                        <span class="badge badge-info">Percentage</span>
-                                    <?php else: ?>
-                                        <span class="badge badge-success">Free Shipping</span>
-                                    <?php endif; ?>
-                                </td>
-                                <td>
-                                    <?php if($promo['type'] == 'percentage'): ?>
-                                        <strong><?php echo $promo['value']; ?>%</strong>
-                                    <?php else: ?>
-                                        <strong><?php echo formatRupiah($promo['value']); ?></strong>
-                                    <?php endif; ?>
-                                </td>
-                                <td><?php echo htmlspecialchars($promo['description']); ?></td>
-                                <td>
-                                    <small>
-                                        <?php echo date('d M Y', strtotime($promo['valid_from'])); ?>
-                                        <br>to<br>
-                                        <?php echo date('d M Y', strtotime($promo['valid_until'])); ?>
-                                    </small>
-                                </td>
-                                <td>
-                                    <?php echo $promo['used_count']; ?> / 
-                                    <?php echo $promo['usage_limit'] > 0 ? $promo['usage_limit'] : '∞'; ?>
-                                </td>
-                                <td>
-                                    <?php if($promo['is_active']): ?>
-                                        <span class="badge badge-success">Active</span>
-                                    <?php else: ?>
-                                        <span class="badge badge-secondary">Inactive</span>
-                                    <?php endif; ?>
-                                </td>
-                                <td>
-                                    <div class="btn-group">
-                                        <a href="?toggle=<?php echo $promo['promo_id']; ?>" 
-                                           class="btn btn-<?php echo $promo['is_active'] ? 'warning' : 'success'; ?> btn-sm"
-                                           title="<?php echo $promo['is_active'] ? 'Deactivate' : 'Activate'; ?>">
-                                            <i class="fas fa-<?php echo $promo['is_active'] ? 'ban' : 'check'; ?>"></i>
-                                        </a>
-                                        <a href="promos-edit.php?id=<?php echo $promo['promo_id']; ?>" 
-                                           class="btn btn-info btn-sm"
-                                           title="Edit">
-                                            <i class="fas fa-edit"></i>
-                                        </a>
-                                        <a href="?delete=<?php echo $promo['promo_id']; ?>" 
-                                           class="btn btn-danger btn-sm btn-delete"
-                                           title="Delete"
-                                           onclick="return confirm('Are you sure you want to delete this promo code?');">
-                                            <i class="fas fa-trash"></i>
-                                        </a>
+                                    <div class="nv-actions">
+                                        <form method="post">
+                                            <?php echo csrf_field(); ?>
+                                            <input type="hidden" name="promo_action" value="toggle">
+                                            <input type="hidden" name="promo_id" value="<?php echo (int) $p['promo_id']; ?>">
+                                            <button type="submit" class="btn btn-sm btn-light-nv" title="<?php echo $p['is_active'] ? 'Nonaktifkan' : 'Aktifkan'; ?>"><i class="fas fa-<?php echo $p['is_active'] ? 'toggle-on' : 'toggle-off'; ?>"></i></button>
+                                        </form>
+                                        <a href="promos-edit.php?id=<?php echo (int) $p['promo_id']; ?>" class="btn btn-sm btn-light-nv" title="Ubah"><i class="fas fa-pen"></i></a>
+                                        <form method="post" onsubmit="return confirm('Hapus kode promo ini?');">
+                                            <?php echo csrf_field(); ?>
+                                            <input type="hidden" name="promo_action" value="delete">
+                                            <input type="hidden" name="promo_id" value="<?php echo (int) $p['promo_id']; ?>">
+                                            <button type="submit" class="btn btn-sm btn-outline-danger" title="Hapus"><i class="fas fa-trash"></i></button>
+                                        </form>
                                     </div>
                                 </td>
                             </tr>
-                            <?php endforeach; ?>
+                        <?php endforeach; ?>
                         </tbody>
                     </table>
                 </div>
             </div>
-
         </div>
     </section>
 </div>
 
-<?php include 'includes/footer.php'; ?>
+<?php
+ob_start();
+?>
+<script>
+$(function () {
+    $('#promosTable').DataTable({ autoWidth: false, order: [[3, 'desc']] });
+});
+</script>
+<?php
+$extra_js = ob_get_clean();
+include 'includes/footer.php';

@@ -1,74 +1,49 @@
+<?php
+// Dipakai semua halaman admin. Set $page_title sebelum include.
+if (!function_exists('e')) {
+    function e($value) { return htmlspecialchars((string) $value, ENT_QUOTES, 'UTF-8'); }
+}
+$admin_name = $_SESSION['admin_name'] ?? 'Admin';
+$initial = strtoupper(function_exists('mb_substr') ? mb_substr($admin_name, 0, 1) : substr($admin_name, 0, 1));
+?>
 <!DOCTYPE html>
-<html lang="en">
+<html lang="id">
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title><?php echo isset($page_title) ? $page_title . ' - ' : ''; ?>Letterbook Admin</title>
+    <title><?php echo isset($page_title) ? e($page_title) . ' - ' : ''; ?>Nestalla Admin</title>
 
-    <!-- Font Awesome -->
+    <link rel="icon" type="image/png" href="../assets/nestalla-mark.png">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="../assets/adminlte/plugins/fontawesome-free/css/all.min.css">
-    <!-- AdminLTE -->
     <link rel="stylesheet" href="../assets/adminlte/dist/css/adminlte.min.css">
-    <!-- DataTables (untuk table) -->
     <link rel="stylesheet" href="../assets/adminlte/plugins/datatables-bs4/css/dataTables.bootstrap4.min.css">
-    
-    <style>
-        .brand-link {
-            border-bottom: 1px solid #4b545c;
-        }
-        .brand-link .brand-image {
-            margin-left: .8rem;
-            margin-right: .5rem;
-        }
-    </style>
+    <link rel="stylesheet" href="../assets/nestalla-admin.css?v=2">
 </head>
-<body class="hold-transition sidebar-mini layout-fixed">
+<body class="hold-transition sidebar-mini layout-fixed layout-navbar-fixed">
 <div class="wrapper">
 
-    <!-- Navbar -->
     <nav class="main-header navbar navbar-expand navbar-white navbar-light">
-        <!-- Left navbar links -->
         <ul class="navbar-nav">
             <li class="nav-item">
-                <a class="nav-link" data-widget="pushmenu" href="#" role="button"><i class="fas fa-bars"></i></a>
-            </li>
-            <li class="nav-item d-none d-sm-inline-block">
-                <a href="index.php" class="nav-link">Home</a>
+                <a class="nav-link" data-widget="pushmenu" href="#" role="button" aria-label="Buka atau tutup menu"><i class="fas fa-bars"></i></a>
             </li>
         </ul>
-
-        <!-- Right navbar links -->
         <ul class="navbar-nav ml-auto">
-            <!-- User Account -->
             <li class="nav-item dropdown">
-                <a class="nav-link" data-toggle="dropdown" href="#">
-                    <i class="far fa-user"></i>
-                    <span class="d-none d-md-inline ml-1"><?php echo $_SESSION['admin_name']; ?></span>
-                </a>
-                <div class="dropdown-menu dropdown-menu-lg dropdown-menu-right">
-                    <span class="dropdown-item dropdown-header">
-                        <?php echo $_SESSION['admin_username']; ?>
+                <a class="nav-link nv-user" data-toggle="dropdown" href="#">
+                    <span class="nv-avatar"><?php echo e($initial); ?></span>
+                    <span class="d-none d-md-block text-left">
+                        <strong><?php echo e($admin_name); ?></strong>
+                        <small>@<?php echo e($_SESSION['admin_username'] ?? 'admin'); ?></small>
                     </span>
-                    <div class="dropdown-divider"></div>
-                    <a href="#" class="dropdown-item">
-                        <i class="fas fa-user mr-2"></i> Profile
-                    </a>
-                    <a href="#" class="dropdown-item">
-                        <i class="fas fa-cog mr-2"></i> Settings
-                    </a>
-                    <div class="dropdown-divider"></div>
-                    <a href="logout.php" class="dropdown-item">
-                        <i class="fas fa-sign-out-alt mr-2"></i> Logout
-                    </a>
-                </div>
-            </li>
-            
-            <!-- Logout Button -->
-            <li class="nav-item">
-                <a class="nav-link" href="logout.php" title="Logout">
-                    <i class="fas fa-sign-out-alt"></i>
                 </a>
+                <div class="dropdown-menu dropdown-menu-right">
+                    <span class="dropdown-item-text text-muted small">Masuk sebagai <?php echo e($_SESSION['admin_username'] ?? 'admin'); ?></span>
+                    <div class="dropdown-divider"></div>
+                    <a href="logout.php" class="dropdown-item"><i class="fas fa-sign-out-alt mr-2"></i> Keluar</a>
+                </div>
             </li>
         </ul>
     </nav>
-    <!-- /.navbar -->
