@@ -24,9 +24,6 @@ function applyMidtransStatus($conn, $order, $midtrans) {
     } elseif ($midtransStatus === 'deny' || $midtransStatus === 'failure') {
         $newPaymentStatus = 'failed';
         $newOrderStatus = 'cancelled';
-    } elseif ($midtransStatus === 'cancel') {
-        $newPaymentStatus = 'cancelled';
-        $newOrderStatus = 'cancelled';
     } elseif ($midtransStatus === 'expire') {
         $newPaymentStatus = 'expired';
         $newOrderStatus = 'cancelled';
@@ -496,8 +493,9 @@ else if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_GET['action']) && $_GE
     $subtotal = 0;
     $bookDetails = []; // untuk item_details Midtrans
 
+    $itemDiscountTotal = 0;
     foreach ($data['items'] as $item) {
-        $bookStmt = $conn->prepare('SELECT book_id, title, price, stock FROM books WHERE book_id = :bid');
+        $bookStmt = $conn->prepare('SELECT book_id, title, price, old_price, stock FROM books WHERE book_id = :bid');
         $bookStmt->bindParam(':bid', $item['book_id']);
         $bookStmt->execute();
         $book = $bookStmt->fetch(PDO::FETCH_ASSOC);
@@ -510,11 +508,16 @@ else if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_GET['action']) && $_GE
             sendError('Stok tidak cukup untuk: ' . $book['title'] . '. Tersedia: ' . $book['stock'], 400);
         }
 
-        $subtotal += (float) $book['price'] * (int) $item['quantity'];
+        $originalPrice = $book['old_price'] !== null ? (float) $book['old_price'] : (float) $book['price'];
+        $sellingPrice = (float) $book['price'];
+        $itemDiscount = ($originalPrice - $sellingPrice) * (int) $item['quantity'];
+        $itemDiscountTotal += $itemDiscount;
+
+        $subtotal += $originalPrice * (int) $item['quantity'];
 
         $bookDetails[] = [
             'id' => $book['book_id'],
-            'price' => (int) $book['price'],
+            'price' => (int) $originalPrice,
             'quantity' => (int) $item['quantity'],
             'name' => substr($book['title'], 0, 50),
         ];
@@ -548,6 +551,8 @@ else if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_GET['action']) && $_GE
             $shippingCost = 0;
         }
     }
+
+    $discountAmount += $itemDiscountTotal;
 
     $tax = 0;
     $totalAmount = (float) $subtotal - $discountAmount + $shippingCost + $tax;
@@ -598,17 +603,14 @@ else if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_GET['action']) && $_GE
                   VALUES (:order_id, :book_id, :quantity, :price)";
         $stmt = $conn->prepare($query);
 
+        $itemIndex = 0;
         foreach ($data['items'] as $item) {
-            $bookStmt = $conn->prepare('SELECT price FROM books WHERE book_id = :bid');
-            $bookStmt->bindParam(':bid', $item['book_id']);
-            $bookStmt->execute();
-            $bookPrice = $bookStmt->fetch(PDO::FETCH_ASSOC);
-
             $stmt->bindParam(':order_id', $orderId);
             $stmt->bindParam(':book_id', $item['book_id']);
             $stmt->bindParam(':quantity', $item['quantity']);
-            $stmt->bindParam(':price', $bookPrice['price']);
+            $stmt->bindParam(':price', $bookDetails[$itemIndex]['price']);
             $stmt->execute();
+            $itemIndex++;
         }
 
         // Minta Snap token ke Midtrans

@@ -21,6 +21,38 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
         $book = $stmt->fetch(PDO::FETCH_ASSOC);
         
         if ($book) {
+            // Fetch reviews for this book
+            $reviewQuery = "SELECT t.rating, t.message, t.created_at,
+                                   u.full_name, u.username, u.avatar
+                            FROM testimonials t
+                            JOIN users u ON t.user_id = u.user_id
+                            WHERE t.book_id = :bid
+                            ORDER BY t.created_at DESC";
+            $reviewStmt = $conn->prepare($reviewQuery);
+            $reviewStmt->bindParam(':bid', $book_id);
+            $reviewStmt->execute();
+            $reviewRows = $reviewStmt->fetchAll(PDO::FETCH_ASSOC);
+            
+            $reviews = [];
+            foreach ($reviewRows as $r) {
+                $name = trim($r['full_name'] ?: $r['username']);
+                $reviews[] = [
+                    'name'       => $name,
+                    'comment'    => $r['message'] ?? '',
+                    'rating'     => (int) $r['rating'],
+                    'avatar_url' => empty($r['avatar']) ? '' : $r['avatar'],
+                ];
+            }
+            
+            $book['reviews'] = $reviews;
+            
+            // Hitung rating rata-rata dari ulasan pelanggan (testimonials)
+            $sum = 0;
+            foreach ($reviews as $r) {
+                $sum += (int) $r['rating'];
+            }
+            $book['rating'] = count($reviews) > 0 ? round($sum / count($reviews), 1) : 0;
+            
             sendSuccess('Book retrieved successfully', $book);
         } else {
             sendError('Book not found', 404);
@@ -73,6 +105,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
         
         $stmt->execute();
         $books = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        
+        // Hitung rating rata-rata dari ulasan pelanggan untuk setiap buku
+        foreach ($books as &$book) {
+            $bookId = intval($book['book_id']);
+            $ratingStmt = $conn->prepare('SELECT ROUND(AVG(rating), 1) as avg_rating FROM testimonials WHERE book_id = :bid');
+            $ratingStmt->bindParam(':bid', $bookId);
+            $ratingStmt->execute();
+            $avgRating = $ratingStmt->fetchColumn();
+            $book['rating'] = $avgRating ? (float) $avgRating : 0;
+        }
+        unset($book);
         
         sendSuccess('Books retrieved successfully', [
             'count' => count($books),

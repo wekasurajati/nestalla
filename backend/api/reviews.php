@@ -19,7 +19,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['book_id'])) {
     $book_id = intval($_GET['book_id']);
 
     try {
-        $stmt = $conn->prepare("SELECT t.testimonial_id, t.rating, t.message, t.is_anonymous, t.created_at,
+        $stmt = $conn->prepare("SELECT t.testimonial_id, t.rating, t.message, t.created_at,
                                        u.full_name, u.username, u.avatar
                                 FROM testimonials t
                                 JOIN users u ON t.user_id = u.user_id
@@ -33,14 +33,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['book_id'])) {
         $reviews = [];
         $sum = 0;
         foreach ($rows as $r) {
-            $anon = (int) $r['is_anonymous'] === 1;
             $name = trim($r['full_name'] ?: $r['username']);
             $reviews[] = [
-                'name'       => $anon ? 'Pengguna Anonim' : $name,
+                'name'       => $name,
                 'comment'    => $r['message'] ?? '',
                 'rating'     => (int) $r['rating'],
-                // Format sama dengan BookReview.fromJson di Flutter
-                'avatar_url' => ($anon || empty($r['avatar'])) ? '' : $r['avatar'],
+                'avatar_url' => empty($r['avatar']) ? '' : $r['avatar'],
                 'created_at' => $r['created_at'],
             ];
             $sum += (int) $r['rating'];
@@ -74,7 +72,6 @@ else if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $book_id = intval($data['book_id'] ?? 0);
     $rating = intval($data['rating'] ?? 0);
     $message = trim((string) ($data['message'] ?? ''));
-    $is_anonymous = !empty($data['is_anonymous']) ? 1 : 0;
 
     if ($order_id <= 0) {
         sendError("Field 'order_id' wajib diisi");
@@ -83,9 +80,6 @@ else if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         sendError('Rating harus 1 sampai 5');
     }
     $len = mb_strlen($message, 'UTF-8');
-    if ($len < 10) {
-        sendError('Ulasan minimal 10 karakter');
-    }
     if ($len > 2000) {
         sendError('Ulasan maksimal 2000 karakter');
     }
@@ -129,14 +123,13 @@ else if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         $conn->beginTransaction();
 
-        $stmt = $conn->prepare('INSERT INTO testimonials (user_id, book_id, order_id, rating, message, is_anonymous)
-                                VALUES (:uid, :bid, :oid, :rating, :message, :anon)');
+        $stmt = $conn->prepare('INSERT INTO testimonials (user_id, book_id, order_id, rating, message)
+                                VALUES (:uid, :bid, :oid, :rating, :message)');
         $stmt->bindParam(':uid', $user_id);
         $stmt->bindParam(':bid', $book_id);
         $stmt->bindParam(':oid', $order_id);
         $stmt->bindParam(':rating', $rating);
         $stmt->bindParam(':message', $message);
-        $stmt->bindParam(':anon', $is_anonymous);
         $stmt->execute();
         $review_id = $conn->lastInsertId();
 
