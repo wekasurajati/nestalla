@@ -88,11 +88,6 @@ function book_read_input(array $src)
     if ($stock === '' || !ctype_digit($stock)) { $errors[] = 'Stok wajib berupa bilangan bulat 0 atau lebih.'; }
     $d['stock'] = ctype_digit($stock) ? (int) $stock : 0;
 
-    $rating = $text('rating');
-    if ($rating === '') { $rating = '0'; }
-    if (!is_numeric($rating) || $rating < 0 || $rating > 5) { $errors[] = 'Rating harus antara 0 dan 5.'; }
-    $d['rating'] = is_numeric($rating) ? round((float) $rating, 2) : 0;
-
     $year = $text('published_year');
     if ($year !== '' && (!ctype_digit($year) || $year < 1000 || $year > (int) date('Y') + 1)) { $errors[] = 'Tahun terbit tidak valid.'; }
     $d['published_year'] = ($year !== '' && ctype_digit($year)) ? (int) $year : null;
@@ -203,12 +198,9 @@ function render_book_form(array $b, array $categories, $currentImage, $submitLab
             </div>
 
             <div class="card">
-                <div class="card-header"><h3 class="card-title">Rating & label</h3></div>
+                <div class="card-header"><h3 class="card-title">Label</h3></div>
                 <div class="card-body">
-                    <div class="form-group">
-                        <label for="rating">Rating (0–5)</label>
-                        <input type="number" id="rating" name="rating" class="form-control" min="0" max="5" step="0.1" value="<?php echo e($b['rating'] ?? '0'); ?>">
-                    </div>
+                    
                     <div class="custom-control custom-switch mb-2">
                         <input type="checkbox" class="custom-control-input" id="is_featured" name="is_featured" value="1" <?php echo book_checked($b, 'is_featured'); ?>>
                         <label class="custom-control-label" for="is_featured">Buku unggulan</label>
