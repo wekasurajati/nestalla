@@ -37,7 +37,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $st = $conn->prepare(
                     'UPDATE books SET title = :title, author = :author, publisher = :publisher, description = :description,
                             price = :price, old_price = :old_price, published_year = :published_year, image = :image,
-                            category = :category, stock = :stock, age_rating = :age_rating, rating = :rating,
+                            category = :category, stock = :stock, age_rating = :age_rating,
                             is_featured = :is_featured, is_discount = :is_discount, is_new = :is_new
                      WHERE book_id = :id'
                 );
@@ -46,7 +46,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     ':description' => $data['description'], ':price' => $data['price'], ':old_price' => $data['old_price'],
                     ':published_year' => $data['published_year'], ':image' => $newImage ?? (string) $book['image'],
                     ':category' => $data['category'], ':stock' => $data['stock'], ':age_rating' => $data['age_rating'],
-                    ':rating' => $data['rating'], ':is_featured' => $data['is_featured'], ':is_discount' => $data['is_discount'],
+                    ':is_featured' => $data['is_featured'], ':is_discount' => $data['is_discount'],
                     ':is_new' => $data['is_new'], ':id' => $id,
                 ]);
                 if ($newImage !== null) {

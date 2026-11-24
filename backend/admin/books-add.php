@@ -7,7 +7,7 @@ $conn = $database->getConnection();
 $conn->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 
 $errors = [];
-$b = ['stock' => '0', 'rating' => '0'];
+$b = ['stock' => '0'];
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $b = $_POST;
@@ -27,14 +27,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if (!$errors) {
             try {
                 $st = $conn->prepare(
-                    'INSERT INTO books (title, author, publisher, description, price, old_price, published_year, image, category, stock, age_rating, rating, is_featured, is_discount, is_new)
-                     VALUES (:title, :author, :publisher, :description, :price, :old_price, :published_year, :image, :category, :stock, :age_rating, :rating, :is_featured, :is_discount, :is_new)'
+                    'INSERT INTO books (title, author, publisher, description, price, old_price, published_year, image, category, stock, age_rating, is_featured, is_discount, is_new)
+                     VALUES (:title, :author, :publisher, :description, :price, :old_price, :published_year, :image, :category, :stock, :age_rating, :is_featured, :is_discount, :is_new)'
                 );
                 $st->execute([
                     ':title' => $data['title'], ':author' => $data['author'], ':publisher' => $data['publisher'],
                     ':description' => $data['description'], ':price' => $data['price'], ':old_price' => $data['old_price'],
                     ':published_year' => $data['published_year'], ':image' => $image, ':category' => $data['category'],
-                    ':stock' => $data['stock'], ':age_rating' => $data['age_rating'], ':rating' => $data['rating'],
+                    ':stock' => $data['stock'], ':age_rating' => $data['age_rating'],
                     ':is_featured' => $data['is_featured'], ':is_discount' => $data['is_discount'], ':is_new' => $data['is_new'],
                 ]);
                 flash('success', 'Buku "' . $data['title'] . '" berhasil ditambahkan.');
