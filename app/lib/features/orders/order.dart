@@ -34,13 +34,14 @@ int _toInt(Object? v, [int fallback = 0]) {
   return num.tryParse(v?.toString() ?? '')?.round() ?? fallback;
 }
 
-/// Status dari backend -> status di aplikasi.
-/// pending & processing = Dikemas, cancelled = Dibatalkan.
+/// Status dari backend (kolom `status`) -> status di aplikasi.
 OrderStatus orderStatusFromApi(String? status) => switch (status) {
+  'pending' => OrderStatus.pending,
+  'processing' => OrderStatus.packed,
   'shipped' => OrderStatus.shipped,
   'completed' => OrderStatus.completed,
   'cancelled' => OrderStatus.canceled,
-  _ => OrderStatus.packed,
+  _ => OrderStatus.pending,
 };
 
 int? _toIntOpt(dynamic v) {
@@ -143,7 +144,7 @@ class Order {
       promoId: _toIntOpt(json['promo_id']),
       paymentMethod: json['payment_method'] as String?,
       orderDate: _parseDateTime(json['created_at']),
-      status: _mapPaymentStatusToOrderStatus(json['payment_status'] as String?),
+      status: orderStatusFromApi(json['status'] as String?),
       shippingCost: _toInt(json['shipping_cost']),
       tax: _toInt(json['tax']),
       discountAmount: _toInt(json['discount_amount']),
@@ -158,20 +159,6 @@ class Order {
     if (value == null) return DateTime.now();
     if (value is DateTime) return value;
     return DateTime.tryParse(value.toString()) ?? DateTime.now();
-  }
-
-  static OrderStatus _mapPaymentStatusToOrderStatus(String? status) {
-    switch (status) {
-      case 'paid':
-        return OrderStatus.packed;
-      case 'failed':
-      case 'expired':
-      case 'cancelled':
-        return OrderStatus.canceled;
-      case 'pending':
-      default:
-        return OrderStatus.pending;
-    }
   }
 
   /// Buku pertama di pesanan (dipakai untuk kartu di daftar pesanan).

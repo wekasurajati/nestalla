@@ -7,7 +7,6 @@ import 'core/theme/app_theme.dart';
 import 'providers/cart_provider.dart';
 import 'providers/notification_provider.dart';
 import 'providers/wishlist_provider.dart';
-import 'repositories/book_repository.dart';
 import 'repositories/api_book_repository.dart';
 import 'features/book_detail/book_detail_provider.dart';
 import 'features/checkout/checkout_repository.dart';
@@ -45,8 +44,10 @@ Future<void> main() async {
           create: (ctx) => ApiCheckoutRepository(ctx.read<BookRepository>()),
         ),
         ChangeNotifierProvider(
-          create: (ctx) =>
-              NotificationProvider(ctx.read<AuthProvider>(), ApiNotificationRepository()),
+          create: (ctx) => NotificationProvider(
+            ctx.read<AuthProvider>(),
+            ApiNotificationRepository(),
+          ),
         ),
         ChangeNotifierProvider(create: (_) => AddressProvider()),
         Provider<OrderRepository>(

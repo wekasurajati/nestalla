@@ -36,6 +36,12 @@ class WishlistCard extends StatelessWidget {
                   fit: BoxFit.contain,
                   showShadow: false,
                 ),
+                if (book.oldPrice != null && book.oldPrice! > book.price)
+                  Positioned(
+                    top: 8,
+                    left: 8,
+                    child: _DiscountBadge(book: book),
+                  ),
                 Positioned(
                   top: 8,
                   right: 8,
@@ -70,30 +76,74 @@ class WishlistCard extends StatelessWidget {
                       ),
                     ),
                     const SizedBox(height: 3),
-                    RatingLabel(
-                      rating: book.rating,
-                      iconSize: 12,
-                      fontSize: 11,
-                      color: AppColors.dark.withValues(alpha: 0.7),
-                    ),
-                    const Spacer(),
-                    FittedBox(
-                      fit: BoxFit.scaleDown,
-                      alignment: Alignment.centerLeft,
-                      child: Text(
-                        formatRupiah(book.price),
-                        style: const TextStyle(
-                          fontSize: 13,
-                          fontWeight: FontWeight.bold,
-                          color: AppColors.navy,
-                        ),
+                    if (book.rating > 0)
+                      RatingLabel(
+                        rating: book.rating,
+                        iconSize: 12,
+                        fontSize: 11,
+                        color: AppColors.dark.withValues(alpha: 0.7),
                       ),
+                    const Spacer(),
+                    Wrap(
+                      spacing: 4,
+                      runSpacing: 2,
+                      crossAxisAlignment: WrapCrossAlignment.center,
+                      children: [
+                        Text(
+                          formatRupiah(book.price),
+                          style: const TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.bold,
+                            color: AppColors.navy,
+                          ),
+                        ),
+                        if (book.oldPrice != null && book.oldPrice! > book.price)
+                          Text(
+                            formatRupiah(book.oldPrice!),
+                            style: TextStyle(
+                              fontSize: 11,
+                              color: AppColors.dark.withValues(alpha: 0.5),
+                              decoration: TextDecoration.lineThrough,
+                            ),
+                          ),
+                      ],
                     ),
                   ],
                 ),
               ),
             ),
           ],
+        ),
+      ),
+    );
+  }
+}
+
+class _DiscountBadge extends StatelessWidget {
+  final Book book;
+
+  const _DiscountBadge({required this.book});
+
+  @override
+  Widget build(BuildContext context) {
+    final oldPrice = book.oldPrice;
+    if (oldPrice == null || oldPrice <= book.price) {
+      return const SizedBox.shrink();
+    }
+    final percent = ((oldPrice - book.price) / oldPrice * 100).round();
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+      decoration: BoxDecoration(
+        color: AppColors.navy,
+        borderRadius: AppRadius.border,
+      ),
+      child: Text(
+        '-$percent%',
+        style: const TextStyle(
+          fontSize: 9,
+          fontWeight: FontWeight.bold,
+          color: AppColors.background,
         ),
       ),
     );

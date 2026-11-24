@@ -297,12 +297,14 @@ class _InfoRow extends StatelessWidget {
       spacing: 12,
       runSpacing: 6,
       children: [
-        RatingLabel(
-          rating: book.rating,
-          iconSize: 16,
-          fontSize: 12,
-          color: AppColors.dark,
-        ),
+        if (book.reviews.isNotEmpty) ...[
+          RatingLabel(
+            rating: book.rating,
+            iconSize: 16,
+            fontSize: 12,
+            color: AppColors.dark,
+          ),
+        ],
         Text(book.category, style: textStyle),
         if (book.ageRating != null) Text(book.ageRating!, style: textStyle),
         if (book.publishedYear != null)

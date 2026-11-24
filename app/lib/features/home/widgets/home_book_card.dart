@@ -66,12 +66,13 @@ class HomeBookCard extends StatelessWidget {
                 ),
               ),
               const SizedBox(height: 4),
-              RatingLabel(
-                rating: book.rating,
-                iconSize: 12,
-                fontSize: 10,
-                color: AppColors.dark.withValues(alpha: 0.7),
-              ),
+              if (book.rating > 0)
+                RatingLabel(
+                  rating: book.rating,
+                  iconSize: 12,
+                  fontSize: 10,
+                  color: AppColors.dark.withValues(alpha: 0.7),
+                ),
               const SizedBox(height: 4),
               Wrap(
                 spacing: 4,
@@ -81,7 +82,7 @@ class HomeBookCard extends StatelessWidget {
                   Text(
                     formatRupiah(book.price),
                     style: const TextStyle(
-                      fontSize: 12,
+                      fontSize: 11,
                       fontWeight: FontWeight.bold,
                       color: AppColors.navy,
                     ),
@@ -90,7 +91,7 @@ class HomeBookCard extends StatelessWidget {
                     Text(
                       formatRupiah(book.oldPrice!),
                       style: TextStyle(
-                        fontSize: 10,
+                        fontSize: 9,
                         color: AppColors.dark.withValues(alpha: 0.5),
                         decoration: TextDecoration.lineThrough,
                       ),

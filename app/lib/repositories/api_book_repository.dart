@@ -4,7 +4,17 @@ import 'package:http/http.dart' as http;
 
 import '../core/config/api_config.dart';
 import '../models/book.dart';
-import 'book_repository.dart';
+
+abstract class BookRepository {
+  Future<List<Book>> getBooks();
+  Future<Book?> getBookById(int id);
+  Future<List<Book>> searchBooks(String query);
+  Future<List<String>> getCategories();
+  Future<List<Book>> getFeatured();
+  Future<List<Book>> getDiscounts();
+  Future<List<Book>> getNewest();
+  Future<List<Book>> getBooksByCategory(String category);
+}
 
 class ApiBookRepository implements BookRepository {
   @override

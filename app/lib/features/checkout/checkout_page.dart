@@ -10,7 +10,7 @@ import '../../models/book.dart';
 import '../../providers/address_provider.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/cart_provider.dart';
-import '../../repositories/book_repository.dart';
+import '../../repositories/api_book_repository.dart';
 import '../../widgets/address_card.dart';
 import '../../widgets/book_list_tile.dart';
 import 'checkout_models.dart';

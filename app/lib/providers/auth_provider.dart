@@ -80,12 +80,14 @@ class AuthProvider extends ChangeNotifier {
 
   Future<void> updateProfile({
     required String fullName,
+    String? username,
     String? phone,
     String? birthDate,
   }) async {
     final data = await _repo.updateProfile(
       _token!,
       fullName: fullName,
+      username: username,
       phone: phone,
       birthDate: birthDate,
     );

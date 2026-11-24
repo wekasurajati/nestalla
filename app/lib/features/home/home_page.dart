@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../core/theme/app_colors.dart';
 import '../../models/book.dart';
-import '../../repositories/book_repository.dart';
+import '../../providers/auth_provider.dart';
+import '../../repositories/api_book_repository.dart';
 import 'widgets/home_book_section.dart';
 import 'widgets/home_genre_filter.dart';
 import 'widgets/home_header.dart';
@@ -18,25 +18,26 @@ class HomePage extends StatefulWidget {
 
 class _HomePageState extends State<HomePage> {
   late final Future<List<Book>> _booksFuture;
-  String _username = 'Amortage';
   String? _selectedGenre;
 
   @override
   void initState() {
     super.initState();
     _booksFuture = context.read<BookRepository>().getBooks();
-    _loadUsername();
   }
 
-  Future<void> _loadUsername() async {
-    final prefs = await SharedPreferences.getInstance();
-    final saved = prefs.getString('username')?.trim();
-    if (!mounted || saved == null || saved.isEmpty) return;
-    setState(() => _username = saved);
+  String _username(BuildContext context) {
+    final auth = context.watch<AuthProvider>();
+    final user = auth.user;
+    if (user != null) {
+      return user['username'] ?? user['full_name'] ?? 'Pengguna';
+    }
+    return 'Amortage';
   }
 
   @override
   Widget build(BuildContext context) {
+    final username = _username(context);
     return Scaffold(
       backgroundColor: AppColors.background,
       body: SafeArea(
@@ -63,8 +64,8 @@ class _HomePageState extends State<HomePage> {
               );
             }
 
-            final genres = allBooks.map((book) => book.category).toSet().toList()
-              ..sort();
+            final genres =
+                allBooks.map((book) => book.category).toSet().toList()..sort();
             final selectedGenre = genres.contains(_selectedGenre)
                 ? _selectedGenre
                 : null;
@@ -95,13 +96,12 @@ class _HomePageState extends State<HomePage> {
             return ListView(
               padding: const EdgeInsets.only(bottom: 24),
               children: [
-                HomeHeader(username: _username),
+                HomeHeader(username: username),
                 const SizedBox(height: 4),
                 HomeGenreFilter(
                   genres: genres,
                   selectedGenre: selectedGenre,
-                  onSelected: (genre) =>
-                      setState(() => _selectedGenre = genre),
+                  onSelected: (genre) => setState(() => _selectedGenre = genre),
                 ),
                 if (!hasSection)
                   const Padding(

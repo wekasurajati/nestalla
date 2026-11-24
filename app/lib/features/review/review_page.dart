@@ -6,7 +6,8 @@ import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_radius.dart';
 import '../../models/book.dart';
 import '../../providers/auth_provider.dart';
-import '../../repositories/book_repository.dart';
+import '../../repositories/api_book_repository.dart';
+import '../../repositories/api_client.dart';
 import '../../widgets/book_cover.dart';
 import '../orders/order.dart';
 import '../orders/order_repository.dart';
@@ -26,7 +27,6 @@ class ReviewPage extends StatefulWidget {
 }
 
 class _ReviewPageState extends State<ReviewPage> {
-  static const _minChars = 10;
   static const _maxChars = 2000;
 
   final _controller = TextEditingController();
@@ -34,7 +34,6 @@ class _ReviewPageState extends State<ReviewPage> {
   late final ReviewRepository _reviewRepository;
 
   int _rating = 0;
-  bool _anonymous = false;
   bool _submitting = false;
 
   @override
@@ -52,7 +51,8 @@ class _ReviewPageState extends State<ReviewPage> {
       if (order == null || order.status != OrderStatus.completed) return null;
       final books = await bookRepository.getBooks();
 
-      final targetBookId = widget.bookId ??
+      final targetBookId =
+          widget.bookId ??
           order.reviewableBookId ??
           (order.items.isNotEmpty ? order.items.first.bookId : null);
       if (targetBookId == null) return null;
@@ -83,7 +83,8 @@ class _ReviewPageState extends State<ReviewPage> {
   }
 
   bool get _canSubmit =>
-      _rating > 0 && _controller.text.trim().length >= _minChars && !_submitting;
+      _rating > 0 &&
+      !_submitting;
 
   Future<void> _submit(Order order, Book book) async {
     setState(() => _submitting = true);
@@ -94,7 +95,7 @@ class _ReviewPageState extends State<ReviewPage> {
           bookId: book.id,
           rating: _rating,
           comment: _controller.text.trim(),
-          anonymous: _anonymous,
+          anonymous: false,
         ),
       );
       if (!mounted) return;
@@ -106,12 +107,15 @@ class _ReviewPageState extends State<ReviewPage> {
       } else {
         context.go('/orders');
       }
-    } catch (_) {
+    } catch (e, st) {
+      debugPrint('Submit review error: $e\n$st');
       if (!mounted) return;
       setState(() => _submitting = false);
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Gagal mengirim ulasan. Coba lagi.')),
-      );
+      final message = e is ApiException
+          ? '${e.message} (${e.statusCode ?? '-'})'
+          : 'Gagal mengirim ulasan. Coba lagi.';
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text(message)));
     }
   }
 
@@ -249,8 +253,7 @@ class _ReviewPageState extends State<ReviewPage> {
                 keyboardType: TextInputType.multiline,
                 style: const TextStyle(fontSize: 14),
                 decoration: InputDecoration(
-                  hintText:
-                      'Ceritakan pengalamanmu terkait produk. Minimal 10 karakter.',
+                  hintText: 'Ceritakan pengalamanmu terkait produk. Minimal 10 karakter.',
                   hintStyle: const TextStyle(color: AppColors.backCircle),
                   filled: true,
                   fillColor: AppColors.background,
@@ -258,21 +261,6 @@ class _ReviewPageState extends State<ReviewPage> {
                   enabledBorder: _border(AppColors.backCircle),
                   focusedBorder: _border(AppColors.blue),
                 ),
-              ),
-              Row(
-                children: [
-                  const Expanded(
-                    child: Text(
-                      'Samarkan foto dan nama saya',
-                      style: TextStyle(fontSize: 14, color: AppColors.dark),
-                    ),
-                  ),
-                  Switch(
-                    value: _anonymous,
-                    activeTrackColor: AppColors.blue,
-                    onChanged: (value) => setState(() => _anonymous = value),
-                  ),
-                ],
               ),
             ],
           ),

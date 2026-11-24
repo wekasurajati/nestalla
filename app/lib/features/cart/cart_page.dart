@@ -7,7 +7,7 @@ import '../../core/theme/app_radius.dart';
 import '../../core/utils/currency.dart';
 import '../../models/book.dart';
 import '../../providers/cart_provider.dart';
-import '../../repositories/book_repository.dart';
+import '../../repositories/api_book_repository.dart';
 import '../../widgets/back_button.dart';
 import '../../widgets/book_list_tile.dart';
 
@@ -31,12 +31,12 @@ class _CartPageState extends State<CartPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.background,
-        appBar: AppBar(
-          title: const Text(
-            'Keranjang',
-            style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-          ),
+      appBar: AppBar(
+        title: const Text(
+          'Keranjang',
+          style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
         ),
+      ),
       body: SafeArea(
         child: FutureBuilder<List<Book>>(
           future: _booksFuture,
@@ -57,9 +57,7 @@ class _CartPageState extends State<CartPage> {
 
             if (cart.items.isEmpty) {
               return Column(
-                children: [
-                  const Expanded(child: _EmptyCartView()),
-                ],
+                children: [const Expanded(child: _EmptyCartView())],
               );
             }
 

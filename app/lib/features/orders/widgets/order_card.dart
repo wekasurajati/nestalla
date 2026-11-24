@@ -6,17 +6,17 @@ import '../../../core/theme/app_radius.dart';
 import '../../../widgets/book_cover.dart';
 import '../order.dart';
 
+String _formatRupiah(num value) {
+  return 'Rp.${value.toString().replaceAllMapped(RegExp(r'(\d{1,3})(?=(\d{3})(?!\d))'), (m) => '${m[1]}.')}';
+}
+
 class OrderCard extends StatelessWidget {
   final Order order;
 
   /// Dipanggil saat kembali dari halaman detail/ulasan, supaya daftar dimuat ulang.
   final VoidCallback? onReturn;
 
-  const OrderCard({
-    super.key,
-    required this.order,
-    this.onReturn,
-  });
+  const OrderCard({super.key, required this.order, this.onReturn});
 
   @override
   Widget build(BuildContext context) {
@@ -39,86 +39,15 @@ class OrderCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Header: No. pesanan + status
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      order.orderDisplayNumber,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.bold,
-                        color: AppColors.dark,
-                      ),
-                    ),
-                    const SizedBox(height: 2),
-                    Text(
-                      'Tanggal pemesanan: ${formatOrderDate(order.orderDate)}',
-                      style: const TextStyle(
-                        fontSize: 11,
-                        fontWeight: FontWeight.w600,
-                        color: AppColors.dark,
-                      ),
-                    ),
-                    const SizedBox(height: 6),
-                    Text.rich(
-                      TextSpan(
-                        text: 'Status : ',
-                        style: const TextStyle(
-                          fontSize: 11,
-                          fontWeight: FontWeight.w600,
-                          color: AppColors.dark,
-                        ),
-                        children: [
-                          TextSpan(
-                            text: order.status.label,
-                            style: TextStyle(
-                              color: order.status.color,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(width: 8),
-              SizedBox(
-                height: 28,
-                child: ElevatedButton(
-                  onPressed: () async {
-                    await context.push('/orders/${order.id}');
-                    onReturn?.call();
-                  },
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.blue,
-                    foregroundColor: AppColors.background,
-                    minimumSize: const Size(72, 28),
-                    padding: const EdgeInsets.symmetric(horizontal: 14),
-                    shape: AppRadius.shape,
-                    textStyle: const TextStyle(
-                      fontSize: 11,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                  child: const Text('Detail'),
-                ),
-              ),
-            ],
+          // Baris buku (item pertama) + info pesanan di dalamnya
+          _OrderItemRow(
+            order: order,
+            item: order.items.first,
+            onReturn: onReturn,
           ),
-          const SizedBox(height: 10),
-          // Items (vertikal)
-          ...order.items.map((item) => _ItemRow(item: item)),
           if (otherItemsCount > 0)
             Padding(
-              padding: const EdgeInsets.only(top: 4),
+              padding: const EdgeInsets.only(top: 6),
               child: Text(
                 'dan $otherItemsCount item lainnya',
                 style: const TextStyle(
@@ -128,36 +57,11 @@ class OrderCard extends StatelessWidget {
                 ),
               ),
             ),
-          const SizedBox(height: 8),
-          // Total
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              const Text(
-                'Total',
-                style: TextStyle(
-                  fontSize: 13,
-                  fontWeight: FontWeight.bold,
-                  color: AppColors.dark,
-                ),
-              ),
-              Text(
-                'Rp.${order.totalAmount.toString().replaceAllMapped(
-                  RegExp(r'(\d{1,3})(?=(\d{3})(?!\d))'),
-                  (m) => '${m[1]}.',
-                )}',
-                style: const TextStyle(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w600,
-                  color: AppColors.navy,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 10),
+
           // Tombol ulasan hanya untuk pesanan yang sudah selesai dan masih ada buku yang belum diulas.
           if (order.status == OrderStatus.completed &&
               order.reviewableBookId != null) ...[
+            const SizedBox(height: 10),
             SizedBox(
               height: 28,
               child: OutlinedButton(
@@ -188,56 +92,142 @@ class OrderCard extends StatelessWidget {
   }
 }
 
-class _ItemRow extends StatelessWidget {
+class _OrderItemRow extends StatelessWidget {
+  final Order order;
   final OrderItem item;
+  final VoidCallback? onReturn;
 
-  const _ItemRow({required this.item});
+  const _OrderItemRow({required this.order, required this.item, this.onReturn});
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 4),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          BookCover(
-            image: item.image,
-            width: 40,
-            height: 60,
-            showShadow: false,
-          ),
-          const SizedBox(width: 8),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  item.title,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w600,
-                    color: AppColors.dark,
+    const infoStyle = TextStyle(
+      fontSize: 11,
+      fontWeight: FontWeight.w600,
+      color: AppColors.dark,
+    );
+
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        BookCover(image: item.image, width: 80, height: 120, showShadow: false),
+        const SizedBox(width: 12),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              // Judul (kiri) + tombol Detail (kanan atas)
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Expanded(
+                    child: Padding(
+                      padding: const EdgeInsets.only(top: 4),
+                      child: Text(
+                        item.title,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
+                          color: AppColors.dark,
+                        ),
+                      ),
+                    ),
                   ),
-                ),
-                const SizedBox(height: 2),
-                Text(
-                  'Qty ${item.quantity}  •  Rp.${item.price.toString().replaceAllMapped(
-                    RegExp(r'(\d{1,3})(?=(\d{3})(?!\d))'),
-                    (m) => '${m[1]}.',
-                  )}',
-                  style: const TextStyle(
-                    fontSize: 11,
-                    color: AppColors.backCircle,
+                  const SizedBox(width: 8),
+                  SizedBox(
+                    height: 28,
+                    child: ElevatedButton(
+                      onPressed: () async {
+                        await context.push('/orders/${order.id}');
+                        onReturn?.call();
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppColors.blue,
+                        foregroundColor: AppColors.background,
+                        minimumSize: const Size(72, 28),
+                        padding: const EdgeInsets.symmetric(horizontal: 14),
+                        shape: AppRadius.shape,
+                        textStyle: const TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      child: const Text('Detail'),
+                    ),
                   ),
+                ],
+              ),
+              const SizedBox(height: 4),
+
+              // Qty + harga
+              Text(
+                'Qty ${item.quantity}  •  ${_formatRupiah(item.price)}',
+                style: const TextStyle(
+                  fontSize: 12,
+                  color: AppColors.backCircle,
                 ),
-              ],
-            ),
+              ),
+              const SizedBox(height: 10),
+
+              // Info pesanan, rata kanan
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  Text(
+                    order.orderDisplayNumber,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: infoStyle,
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    'Tanggal pemesanan: ${formatOrderDate(order.orderDate)}',
+                    style: infoStyle,
+                  ),
+                  const SizedBox(height: 2),
+                  Text.rich(
+                    TextSpan(
+                      text: 'Status : ',
+                      style: infoStyle,
+                      children: [
+                        TextSpan(
+                          text: order.status.label,
+                          style: TextStyle(
+                            color: order.status.color,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 6),
+                  Text.rich(
+                    TextSpan(
+                      text: 'Total  ',
+                      style: const TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.bold,
+                        color: AppColors.dark,
+                      ),
+                      children: [
+                        TextSpan(
+                          text: _formatRupiah(order.totalAmount),
+                          style: const TextStyle(
+                            fontWeight: FontWeight.w600,
+                            color: AppColors.navy,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ],
           ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 }

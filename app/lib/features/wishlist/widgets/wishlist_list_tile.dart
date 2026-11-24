@@ -75,12 +75,13 @@ class WishlistListTile extends StatelessWidget {
                       ),
                     ],
                     const SizedBox(height: 4),
-                    RatingLabel(
-                      rating: book.rating,
-                      iconSize: 13,
-                      fontSize: 11,
-                      color: AppColors.dark.withValues(alpha: 0.7),
-                    ),
+                    if (book.rating > 0)
+                      RatingLabel(
+                        rating: book.rating,
+                        iconSize: 13,
+                        fontSize: 11,
+                        color: AppColors.dark.withValues(alpha: 0.7),
+                      ),
                     const SizedBox(height: 8),
                     Wrap(
                       spacing: 8,
@@ -95,15 +96,6 @@ class WishlistListTile extends StatelessWidget {
                             color: AppColors.navy,
                           ),
                         ),
-                        if (book.oldPrice != null)
-                          Text(
-                            formatRupiah(book.oldPrice!),
-                            style: TextStyle(
-                              fontSize: 11,
-                              color: AppColors.dark.withValues(alpha: 0.5),
-                              decoration: TextDecoration.lineThrough,
-                            ),
-                          ),
                       ],
                     ),
                   ],
