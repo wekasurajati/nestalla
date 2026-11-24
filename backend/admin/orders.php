@@ -16,7 +16,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_status'])) {
             (int) ($_POST['order_id'] ?? 0),
             (string) ($_POST['status'] ?? ''),
             !empty($_POST['send_email']),
-            (string) ($_POST['expected_status'] ?? '')
+            (string) ($_POST['expected_status'] ?? ''),
+            (string) ($_POST['tracking_number'] ?? '')
         );
         flash($kind, $msg);
     }
@@ -24,8 +25,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_status'])) {
 }
 
 // ---------- Data ----------
+$hasTracking = orders_has_tracking($conn);
+$trkCol = $hasTracking ? ', o.tracking_number' : '';
 $sql = 'SELECT o.order_id, o.order_number, o.total_amount, o.discount_amount, o.payment_method, o.status,
-               o.payment_status, o.created_at, u.full_name, u.email, a.recipient_name, a.city
+               o.payment_status, o.created_at' . $trkCol . ', u.full_name, u.email, a.recipient_name, a.city
         FROM orders o
         LEFT JOIN users u ON u.user_id = o.user_id
         LEFT JOIN user_addresses a ON a.address_id = o.address_id
@@ -36,7 +39,7 @@ if (!$orders) {
     $orders = db_rows(
         $conn,
         'SELECT o.order_id, o.order_number, o.total_amount, o.discount_amount, o.payment_method, o.status,
-                o.payment_status, o.created_at, u.full_name, u.email
+                o.payment_status, o.created_at' . $trkCol . ', u.full_name, u.email
          FROM orders o LEFT JOIN users u ON u.user_id = o.user_id ORDER BY o.created_at DESC'
     );
 }
@@ -62,6 +65,14 @@ include 'includes/sidebar.php';
     <section class="content">
         <div class="container-fluid">
             <?php echo flash_render(); ?>
+
+            <?php if (!$hasTracking): ?>
+                <div class="alert alert-warning">
+                    <i class="fas fa-exclamation-triangle mr-1"></i>
+                    Kolom nomor resi belum ada di database, jadi status Dikirim belum bisa disimpan.
+                    Jalankan file migrasi <code>2026-11-24_orders_tracking_number.sql</code> di phpMyAdmin.
+                </div>
+            <?php endif; ?>
 
             <div class="card">
                 <div class="card-header d-flex flex-wrap align-items-center justify-content-between">
@@ -90,10 +101,14 @@ include 'includes/sidebar.php';
                         </thead>
                         <tbody>
                         <?php foreach ($orders as $o): ?>
+                            <?php $trk = (string) ($o['tracking_number'] ?? ''); ?>
                             <tr>
                                 <td data-order="<?php echo (int) strtotime($o['created_at']); ?>">
                                     <strong><?php echo e($o['order_number']); ?></strong>
                                     <br><small class="text-muted"><?php echo e(formatTanggal($o['created_at'])); ?></small>
+                                    <?php if ($trk !== ''): ?>
+                                        <br><small class="text-muted"><i class="fas fa-truck mr-1"></i>Resi: <?php echo e($trk); ?></small>
+                                    <?php endif; ?>
                                 </td>
                                 <td>
                                     <strong><?php echo e($o['full_name'] ?? 'Pelanggan'); ?></strong>
@@ -118,7 +133,8 @@ include 'includes/sidebar.php';
                                     <button type="button" class="btn btn-sm btn-primary" data-toggle="modal" data-target="#statusModal"
                                             data-id="<?php echo (int) $o['order_id']; ?>"
                                             data-number="<?php echo e($o['order_number']); ?>"
-                                            data-status="<?php echo e($o['status']); ?>"><i class="fas fa-pen"></i> Status</button>
+                                            data-status="<?php echo e($o['status']); ?>"
+                                            data-tracking="<?php echo e($trk); ?>"><i class="fas fa-pen"></i> Status</button>
                                 </td>
                             </tr>
                         <?php endforeach; ?>
@@ -132,7 +148,7 @@ include 'includes/sidebar.php';
 
 <div class="modal fade" id="statusModal" tabindex="-1" role="dialog" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
-        <form method="post" id="statusForm" class="modal-content" style="border:0;border-radius:16px">
+        <form method="post" id="statusForm" class="modal-content" style="border:0;border-radius:16px" novalidate>
             <div class="modal-header" style="border-bottom:1px solid #E6EBF3">
                 <h5 class="modal-title font-weight-bold">Ubah status pesanan</h5>
                 <button type="button" class="close" data-dismiss="modal" aria-label="Tutup">&times;</button>
@@ -150,6 +166,13 @@ include 'includes/sidebar.php';
                             <option value="<?php echo e($s); ?>"><?php echo e(status_label($s)); ?></option>
                         <?php endforeach; ?>
                     </select>
+                </div>
+                <div class="form-group" id="m_tracking_group" style="display:none">
+                    <label for="m_tracking">Nomor resi <span class="text-danger">*</span></label>
+                    <input type="text" name="tracking_number" id="m_tracking" class="form-control" maxlength="100"
+                           autocomplete="off" placeholder="Contoh: JNE1234567890" disabled>
+                    <small class="form-text text-muted">Wajib untuk status Dikirim. Huruf, angka, dan tanda hubung (-).</small>
+                    <div class="invalid-feedback" id="m_tracking_err"></div>
                 </div>
                 <div class="custom-control custom-checkbox">
                     <input type="checkbox" class="custom-control-input" id="m_email" name="send_email" value="1" checked>
@@ -180,22 +203,52 @@ $(function () {
     $('#statusFilter').on('change', function () {
         table.column(4).search(this.value ? '^' + $.fn.dataTable.util.escapeRegex(this.value) + '$' : '', true, false).draw();
     });
+
     var saveHtml = $('#m_save').html();
+    var trackingRe = /^[A-Za-z0-9-]{1,100}$/;
+
+    function changed() { return $('#m_status').val() !== $('#m_expected').val(); }
+    // Kolom resi tampil hanya saat status baru = Dikirim
+    function needTracking() { return changed() && $('#m_status').val() === 'shipped'; }
+
     function syncSave() {
         // Tombol Simpan aktif hanya bila status dipilih berbeda dari status saat ini
-        $('#m_save').prop('disabled', $('#m_status').val() === $('#m_expected').val());
+        $('#m_save').prop('disabled', !changed());
     }
+    function syncTracking() {
+        var on = needTracking();
+        $('#m_tracking_group').toggle(on);
+        $('#m_tracking').prop('disabled', !on).removeClass('is-invalid');
+    }
+
     $('#statusModal').on('show.bs.modal', function (ev) {
         var b = $(ev.relatedTarget);
         $('#m_order_id').val(b.data('id'));
         $('#m_number').text(b.data('number'));
         $('#m_expected').val(b.data('status'));
         $('#m_status').val(b.data('status'));
+        // attr (bukan data) supaya nomor resi berisi angka tidak diubah jadi angka
+        $('#m_tracking').val(b.attr('data-tracking') || '');
         $('#m_save').html(saveHtml);
         syncSave();
+        syncTracking();
     });
-    $('#m_status').on('change', syncSave);
-    $('#statusForm').on('submit', function () {
+    $('#m_status').on('change', function () { syncSave(); syncTracking(); });
+    $('#m_tracking').on('input', function () { $(this).removeClass('is-invalid'); });
+
+    $('#statusForm').on('submit', function (ev) {
+        if (needTracking()) {
+            var v = $.trim($('#m_tracking').val());
+            if (!trackingRe.test(v)) {
+                ev.preventDefault();
+                $('#m_tracking_err').text(v === ''
+                    ? 'Nomor resi wajib diisi.'
+                    : 'Hanya huruf, angka, dan tanda hubung (-), maksimal 100 karakter.');
+                $('#m_tracking').addClass('is-invalid').trigger('focus');
+                return false;
+            }
+            $('#m_tracking').val(v);
+        }
         // Cegah klik ganda selagi permintaan diproses
         $('#m_save').prop('disabled', true).html('<i class="fas fa-spinner fa-spin"></i> Menyimpan…');
     });
