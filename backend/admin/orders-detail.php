@@ -13,14 +13,20 @@ if ($orderId <= 0) {
 
 // ---------- Ubah status ----------
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_status'])) {
+    $after = null;
     if (!csrf_valid()) {
         flash('error', 'Sesi tidak valid. Muat ulang halaman lalu coba lagi.');
     } else {
-        list($ok, $msg) = admin_update_order_status($conn, $orderId, (string) ($_POST['status'] ?? ''), !empty($_POST['send_email']));
-        flash($ok ? 'success' : 'error', $msg);
+        list($kind, $msg, $after) = admin_update_order_status(
+            $conn,
+            $orderId,
+            (string) ($_POST['status'] ?? ''),
+            !empty($_POST['send_email']),
+            (string) ($_POST['expected_status'] ?? '')
+        );
+        flash($kind, $msg);
     }
-    header('Location: orders-detail.php?id=' . $orderId);
-    exit;
+    admin_redirect_then('orders-detail.php?id=' . $orderId, $after);
 }
 
 // ---------- Data ----------
@@ -152,12 +158,13 @@ include 'includes/sidebar.php';
                     <div class="card">
                         <div class="card-header"><h3 class="card-title">Ubah status</h3></div>
                         <div class="card-body">
-                            <form method="post">
+                            <form method="post" id="statusForm">
                                 <?php echo csrf_field(); ?>
                                 <input type="hidden" name="update_status" value="1">
+                                <input type="hidden" name="expected_status" value="<?php echo e($order['status']); ?>">
                                 <input type="hidden" name="order_id" value="<?php echo (int) $orderId; ?>">
                                 <div class="form-group">
-                                    <select name="status" class="custom-select">
+                                    <select name="status" id="d_status" class="custom-select">
                                         <?php foreach ($statuses as $s): ?>
                                             <option value="<?php echo e($s); ?>" <?php echo $s === $order['status'] ? 'selected' : ''; ?>><?php echo e(status_label($s)); ?></option>
                                         <?php endforeach; ?>
@@ -166,8 +173,9 @@ include 'includes/sidebar.php';
                                 <div class="custom-control custom-checkbox mb-3">
                                     <input type="checkbox" class="custom-control-input" id="send_email" name="send_email" value="1" checked>
                                     <label class="custom-control-label" for="send_email">Kirim email pemberitahuan</label>
+                                    <small class="form-text text-muted">Dikirim di latar belakang.</small>
                                 </div>
-                                <button type="submit" class="btn btn-primary btn-block">Simpan status</button>
+                                <button type="submit" class="btn btn-primary btn-block" id="d_save" disabled>Simpan status</button>
                             </form>
                         </div>
                     </div>
@@ -216,4 +224,24 @@ include 'includes/sidebar.php';
     </section>
 </div>
 
-<?php include 'includes/footer.php'; ?>
+<?php
+ob_start();
+?>
+<script>
+$(function () {
+    var current = <?php echo json_encode((string) $order['status']); ?>;
+    var saveHtml = $('#d_save').html();
+    function syncSave() { $('#d_save').prop('disabled', $('#d_status').val() === current); }
+    syncSave();
+    $('#d_status').on('change', syncSave);
+    $('#statusForm').on('submit', function () {
+        $('#d_save').prop('disabled', true).html('<i class="fas fa-spinner fa-spin"></i> Menyimpan…');
+    });
+    $(window).on('pageshow', function (e) {
+        if (e.originalEvent && e.originalEvent.persisted) { $('#d_save').html(saveHtml); syncSave(); }
+    });
+});
+</script>
+<?php
+$extra_js = ob_get_clean();
+include 'includes/footer.php';
