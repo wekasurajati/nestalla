@@ -10,6 +10,7 @@ $menu = [
     ['label' => 'Penjualan', 'items' => [
         ['Pesanan', 'fa-receipt', 'orders.php', ['orders.php', 'orders-detail.php']],
         ['Kode Promo', 'fa-ticket-alt', 'promos.php', ['promos.php', 'promos-add.php', 'promos-edit.php']],
+        ['Pengiriman', 'fa-truck', 'shipping.php', ['shipping.php', 'shipping-rates.php']],
     ]],
     ['label' => 'Pelanggan', 'items' => [
         ['Pengguna', 'fa-users', 'users.php', ['users.php']],
