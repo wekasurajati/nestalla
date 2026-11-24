@@ -290,6 +290,19 @@ include 'includes/sidebar.php';
 <?php
 ob_start();
 ?>
+<style>
+    /* Tombol "Simpan resi" saat isinya sudah tersimpan: abu-abu, tidak bisa diklik */
+    #t_save.is-saved, #t_save.is-saved:disabled, #t_save.is-saved:hover {
+        background: #E6EBF3 !important;
+        background-image: none !important;
+        border-color: #E6EBF3 !important;
+        color: #6B778C !important;
+        box-shadow: none !important;
+        opacity: 1 !important;
+        cursor: not-allowed !important;
+        pointer-events: none;
+    }
+</style>
 <script>
 $(function () {
     var current = <?php echo json_encode((string) $order['status']); ?>;
@@ -329,12 +342,23 @@ $(function () {
     // ----- Form ubah nomor resi -----
     var trackHtml = $('#t_save').html();
     function syncTrackSave() {
-        $('#t_save').prop('disabled', $.trim($('#t_tracking').val()) === currentTracking);
+        var v = $.trim($('#t_tracking').val());
+        var same = (v === currentTracking);
+        var saved = same && currentTracking !== '';
+        $('#t_save')
+            .prop('disabled', same)
+            .toggleClass('is-saved', saved)
+            .html(saved ? 'Resi tersimpan' : trackHtml);
     }
     syncTrackSave();
     $('#t_tracking').on('input', function () { $(this).removeClass('is-invalid'); syncTrackSave(); });
     $('#trackingForm').on('submit', function (ev) {
         var v = $.trim($('#t_tracking').val());
+        if (v === currentTracking) {
+            // Tidak ada perubahan: jangan kirim apa pun
+            ev.preventDefault();
+            return false;
+        }
         if (!trackingRe.test(v)) {
             ev.preventDefault();
             $('#t_tracking_err').text(errText(v));
@@ -348,7 +372,7 @@ $(function () {
     $(window).on('pageshow', function (e) {
         if (e.originalEvent && e.originalEvent.persisted) {
             $('#d_save').html(saveHtml); syncSave();
-            $('#t_save').html(trackHtml); syncTrackSave();
+            syncTrackSave();
         }
     });
 });
