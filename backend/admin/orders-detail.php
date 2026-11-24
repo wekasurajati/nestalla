@@ -22,11 +22,23 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_status'])) {
             $orderId,
             (string) ($_POST['status'] ?? ''),
             !empty($_POST['send_email']),
-            (string) ($_POST['expected_status'] ?? '')
+            (string) ($_POST['expected_status'] ?? ''),
+            (string) ($_POST['tracking_number'] ?? '')
         );
         flash($kind, $msg);
     }
     admin_redirect_then('orders-detail.php?id=' . $orderId, $after);
+}
+
+// ---------- Ubah nomor resi saja ----------
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_tracking'])) {
+    if (!csrf_valid()) {
+        flash('error', 'Sesi tidak valid. Muat ulang halaman lalu coba lagi.');
+    } else {
+        list($kind, $msg) = admin_update_tracking($conn, $orderId, (string) ($_POST['tracking_number'] ?? ''));
+        flash($kind, $msg);
+    }
+    admin_redirect_then('orders-detail.php?id=' . $orderId);
 }
 
 // ---------- Data ----------
@@ -72,6 +84,16 @@ $statuses = order_status_values($conn);
 $recipient = $addr['recipient_name'] ?? ($order['full_name'] ?? '-');
 $phone = $addr['phone'] ?? ($order['user_phone'] ?? '');
 
+// Nomor resi dan kurir
+$hasTracking = array_key_exists('tracking_number', $order);
+$trackingNo = (string) ($order['tracking_number'] ?? '');
+$canEditTracking = $hasTracking && in_array($order['status'], ['shipped', 'completed'], true);
+$carrierName = '';
+if (!empty($order['shipping_carrier_id'])) {
+    $c = db_rows($conn, 'SELECT carrier_name FROM shipping_carriers WHERE carrier_id = :c', [':c' => $order['shipping_carrier_id']]);
+    $carrierName = (string) ($c[0]['carrier_name'] ?? '');
+}
+
 $page_title = 'Pesanan ' . $order['order_number'];
 include 'includes/header.php';
 include 'includes/sidebar.php';
@@ -97,6 +119,14 @@ include 'includes/sidebar.php';
     <section class="content">
         <div class="container-fluid">
             <?php echo flash_render(); ?>
+
+            <?php if (!$hasTracking): ?>
+                <div class="alert alert-warning">
+                    <i class="fas fa-exclamation-triangle mr-1"></i>
+                    Kolom nomor resi belum ada di database, jadi status Dikirim belum bisa disimpan.
+                    Jalankan file migrasi <code>2026-11-24_orders_tracking_number.sql</code> di phpMyAdmin.
+                </div>
+            <?php endif; ?>
 
             <div class="row">
                 <div class="col-lg-8">
@@ -158,7 +188,7 @@ include 'includes/sidebar.php';
                     <div class="card">
                         <div class="card-header"><h3 class="card-title">Ubah status</h3></div>
                         <div class="card-body">
-                            <form method="post" id="statusForm">
+                            <form method="post" id="statusForm" novalidate>
                                 <?php echo csrf_field(); ?>
                                 <input type="hidden" name="update_status" value="1">
                                 <input type="hidden" name="expected_status" value="<?php echo e($order['status']); ?>">
@@ -170,6 +200,14 @@ include 'includes/sidebar.php';
                                         <?php endforeach; ?>
                                     </select>
                                 </div>
+                                <div class="form-group" id="d_tracking_group" style="display:none">
+                                    <label for="d_tracking">Nomor resi <span class="text-danger">*</span></label>
+                                    <input type="text" name="tracking_number" id="d_tracking" class="form-control" maxlength="100"
+                                           autocomplete="off" placeholder="Contoh: JNE1234567890"
+                                           value="<?php echo e($trackingNo); ?>" disabled>
+                                    <small class="form-text text-muted">Wajib untuk status Dikirim. Huruf, angka, dan tanda hubung (-).</small>
+                                    <div class="invalid-feedback" id="d_tracking_err"></div>
+                                </div>
                                 <div class="custom-control custom-checkbox mb-3">
                                     <input type="checkbox" class="custom-control-input" id="send_email" name="send_email" value="1" checked>
                                     <label class="custom-control-label" for="send_email">Kirim email pemberitahuan</label>
@@ -179,6 +217,31 @@ include 'includes/sidebar.php';
                             </form>
                         </div>
                     </div>
+
+                    <?php if ($hasTracking && ($canEditTracking || $trackingNo !== '')): ?>
+                    <div class="card">
+                        <div class="card-header"><h3 class="card-title">Pengiriman</h3></div>
+                        <div class="card-body">
+                            <div class="nv-kv"><span>Kurir</span><span><?php echo e($carrierName !== '' ? $carrierName : '-'); ?></span></div>
+                            <?php if ($canEditTracking): ?>
+                                <form method="post" id="trackingForm" class="mt-3" novalidate>
+                                    <?php echo csrf_field(); ?>
+                                    <input type="hidden" name="update_tracking" value="1">
+                                    <input type="hidden" name="order_id" value="<?php echo (int) $orderId; ?>">
+                                    <div class="form-group mb-2">
+                                        <label for="t_tracking">Nomor resi</label>
+                                        <input type="text" name="tracking_number" id="t_tracking" class="form-control" maxlength="100"
+                                               autocomplete="off" value="<?php echo e($trackingNo); ?>">
+                                        <div class="invalid-feedback" id="t_tracking_err"></div>
+                                    </div>
+                                    <button type="submit" class="btn btn-primary btn-block" id="t_save" disabled>Simpan resi</button>
+                                </form>
+                            <?php else: ?>
+                                <div class="nv-kv"><span>Nomor resi</span><span><?php echo e($trackingNo); ?></span></div>
+                            <?php endif; ?>
+                        </div>
+                    </div>
+                    <?php endif; ?>
 
                     <div class="card">
                         <div class="card-header"><h3 class="card-title">Pelanggan</h3></div>
@@ -230,15 +293,63 @@ ob_start();
 <script>
 $(function () {
     var current = <?php echo json_encode((string) $order['status']); ?>;
+    var currentTracking = <?php echo json_encode($trackingNo); ?>;
+    var trackingRe = /^[A-Za-z0-9-]{1,100}$/;
+    var errText = function (v) {
+        return v === '' ? 'Nomor resi wajib diisi.' : 'Hanya huruf, angka, dan tanda hubung (-), maksimal 100 karakter.';
+    };
+
+    // ----- Form ubah status -----
     var saveHtml = $('#d_save').html();
+    function needTracking() { return $('#d_status').val() === 'shipped' && current !== 'shipped'; }
     function syncSave() { $('#d_save').prop('disabled', $('#d_status').val() === current); }
+    function syncTracking() {
+        var on = needTracking();
+        $('#d_tracking_group').toggle(on);
+        $('#d_tracking').prop('disabled', !on).removeClass('is-invalid');
+    }
     syncSave();
-    $('#d_status').on('change', syncSave);
-    $('#statusForm').on('submit', function () {
+    syncTracking();
+    $('#d_status').on('change', function () { syncSave(); syncTracking(); });
+    $('#d_tracking').on('input', function () { $(this).removeClass('is-invalid'); });
+    $('#statusForm').on('submit', function (ev) {
+        if (needTracking()) {
+            var v = $.trim($('#d_tracking').val());
+            if (!trackingRe.test(v)) {
+                ev.preventDefault();
+                $('#d_tracking_err').text(errText(v));
+                $('#d_tracking').addClass('is-invalid').trigger('focus');
+                return false;
+            }
+            $('#d_tracking').val(v);
+        }
         $('#d_save').prop('disabled', true).html('<i class="fas fa-spinner fa-spin"></i> Menyimpan…');
     });
+
+    // ----- Form ubah nomor resi -----
+    var trackHtml = $('#t_save').html();
+    function syncTrackSave() {
+        $('#t_save').prop('disabled', $.trim($('#t_tracking').val()) === currentTracking);
+    }
+    syncTrackSave();
+    $('#t_tracking').on('input', function () { $(this).removeClass('is-invalid'); syncTrackSave(); });
+    $('#trackingForm').on('submit', function (ev) {
+        var v = $.trim($('#t_tracking').val());
+        if (!trackingRe.test(v)) {
+            ev.preventDefault();
+            $('#t_tracking_err').text(errText(v));
+            $('#t_tracking').addClass('is-invalid').trigger('focus');
+            return false;
+        }
+        $('#t_tracking').val(v);
+        $('#t_save').prop('disabled', true).html('<i class="fas fa-spinner fa-spin"></i> Menyimpan…');
+    });
+
     $(window).on('pageshow', function (e) {
-        if (e.originalEvent && e.originalEvent.persisted) { $('#d_save').html(saveHtml); syncSave(); }
+        if (e.originalEvent && e.originalEvent.persisted) {
+            $('#d_save').html(saveHtml); syncSave();
+            $('#t_save').html(trackHtml); syncTrackSave();
+        }
     });
 });
 </script>

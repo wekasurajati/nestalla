@@ -1,6 +1,6 @@
 <?php
 // File: admin/includes/orders_lib.php
-// Fungsi bantu khusus pesanan (label, warna, ubah status).
+// Fungsi bantu khusus pesanan (label, warna, ubah status, nomor resi).
 
 function enum_values(PDO $conn, $table, $column)
 {
@@ -57,11 +57,100 @@ function payment_method_label($m)
     return $map[$m] ?? ucfirst((string) $m);
 }
 
+// ---------- Nomor resi ----------
+
+// Apakah kolom orders.tracking_number sudah ada (migrasi sudah diimpor)?
+function orders_has_tracking(PDO $conn)
+{
+    static $has = null;
+    if ($has === null) {
+        $n = db_scalar(
+            $conn,
+            "SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'orders' AND COLUMN_NAME = 'tracking_number'",
+            [],
+            0
+        );
+        $has = ((int) $n) > 0;
+    }
+    return $has;
+}
+
+// Validasi nomor resi di server. Mengembalikan [nilaiBersih, pesanError].
+// Pesan error kosong berarti valid.
+function clean_tracking($raw)
+{
+    $t = trim((string) $raw);
+    if ($t === '') {
+        return ['', 'Nomor resi wajib diisi.'];
+    }
+    if (strlen($t) > 100) {
+        return ['', 'Nomor resi maksimal 100 karakter.'];
+    }
+    if (!preg_match('/^[A-Za-z0-9-]+$/', $t)) {
+        return ['', 'Nomor resi hanya boleh berisi huruf, angka, dan tanda hubung (-), tanpa spasi.'];
+    }
+    return [$t, ''];
+}
+
+function tracking_missing_message()
+{
+    return 'Kolom tracking_number belum ada di database. Jalankan file migrasi 2026-11-24_orders_tracking_number.sql di phpMyAdmin dulu.';
+}
+
+// Ubah nomor resi saja (untuk pesanan yang sudah Dikirim atau Selesai).
+// Mengembalikan [jenisPesan, pesan].
+function admin_update_tracking(PDO $conn, $orderId, $trackingRaw)
+{
+    if (!orders_has_tracking($conn)) {
+        return ['error', tracking_missing_message()];
+    }
+    list($tracking, $err) = clean_tracking($trackingRaw);
+    if ($err !== '') {
+        return ['error', 'Nomor resi tidak disimpan. ' . $err];
+    }
+
+    $rows = db_rows(
+        $conn,
+        'SELECT order_number, status, tracking_number FROM orders WHERE order_id = :id',
+        [':id' => $orderId]
+    );
+    if (!$rows) {
+        return ['error', 'Pesanan tidak ditemukan.'];
+    }
+    $o = $rows[0];
+    $no = $o['order_number'];
+
+    if (!in_array($o['status'], ['shipped', 'completed'], true)) {
+        return ['error', 'Nomor resi hanya bisa diubah setelah pesanan ' . $no . ' berstatus Dikirim.'];
+    }
+    if ((string) $o['tracking_number'] === $tracking) {
+        return ['info', 'Nomor resi pesanan ' . $no . ' tidak berubah.'];
+    }
+
+    try {
+        $up = $conn->prepare(
+            "UPDATE orders SET tracking_number = :t WHERE order_id = :id AND status IN ('shipped', 'completed')"
+        );
+        $ok = $up->execute([':t' => $tracking, ':id' => $orderId]);
+    } catch (Throwable $ex) {
+        error_log('[admin] gagal simpan resi ' . $no . ': ' . $ex->getMessage());
+        return ['error', 'Nomor resi gagal disimpan. Coba lagi.'];
+    }
+    if ($ok === false || $up->rowCount() === 0) {
+        return ['info', 'Pesanan ' . $no . ' baru saja berubah. Muat ulang halaman, lalu coba lagi.'];
+    }
+    return ['success', 'Nomor resi pesanan ' . $no . ' disimpan: ' . $tracking . '.'];
+}
+
+// ---------- Ubah status ----------
+
 // Ubah status pesanan.
 // Mengembalikan [jenisPesan, pesan, tugasSesudahRespons|null].
 // jenisPesan: success | info | warning | error. Email dikirim SESUDAH halaman
 // selesai dimuat (lihat admin_redirect_then), supaya admin tidak menunggu SMTP.
-function admin_update_order_status(PDO $conn, $orderId, $newStatus, $sendEmail, $expectedStatus = '')
+// Bila status baru 'shipped', nomor resi ($trackingRaw) wajib dan disimpan
+// bersama status dalam satu UPDATE.
+function admin_update_order_status(PDO $conn, $orderId, $newStatus, $sendEmail, $expectedStatus = '', $trackingRaw = '')
 {
     if (!in_array($newStatus, order_status_values($conn), true)) {
         return ['error', 'Status tidak valid.', null];
@@ -90,14 +179,43 @@ function admin_update_order_status(PDO $conn, $orderId, $newStatus, $sendEmail, 
         return ['info', 'Pesanan ' . $no . ' sudah berstatus "' . status_label($old) . '", tidak ada perubahan.', null];
     }
 
+    // Status Dikirim: nomor resi wajib dan divalidasi di server
+    $isShip = ($newStatus === 'shipped');
+    $tracking = '';
+    if ($isShip) {
+        if (!orders_has_tracking($conn)) {
+            return ['error', tracking_missing_message(), null];
+        }
+        list($tracking, $trkErr) = clean_tracking($trackingRaw);
+        if ($trkErr !== '') {
+            return ['error', 'Status tidak diubah. ' . $trkErr, null];
+        }
+    }
+
     // Ubah hanya bila status masih sama dengan yang tadi dibaca (anti tabrakan)
-    $up = $conn->prepare('UPDATE orders SET status = :s WHERE order_id = :id AND status = :old');
-    $up->execute([':s' => $newStatus, ':id' => $orderId, ':old' => $old]);
+    try {
+        if ($isShip) {
+            $up = $conn->prepare('UPDATE orders SET status = :s, tracking_number = :t WHERE order_id = :id AND status = :old');
+            $ok = $up->execute([':s' => $newStatus, ':t' => $tracking, ':id' => $orderId, ':old' => $old]);
+        } else {
+            $up = $conn->prepare('UPDATE orders SET status = :s WHERE order_id = :id AND status = :old');
+            $ok = $up->execute([':s' => $newStatus, ':id' => $orderId, ':old' => $old]);
+        }
+    } catch (Throwable $ex) {
+        error_log('[admin] gagal ubah status ' . $no . ': ' . $ex->getMessage());
+        return ['error', 'Status pesanan ' . $no . ' gagal disimpan. Coba lagi.', null];
+    }
+    if ($ok === false) {
+        return ['error', 'Status pesanan ' . $no . ' gagal disimpan. Coba lagi.', null];
+    }
     if ($up->rowCount() === 0) {
         return ['info', 'Status pesanan ' . $no . ' baru saja diubah oleh permintaan lain. Muat ulang halaman untuk melihat status terbaru.', null];
     }
 
     $msg = 'Status pesanan ' . $no . ' diubah dari "' . status_label($old) . '" menjadi "' . status_label($newStatus) . '".';
+    if ($isShip) {
+        $msg .= ' Nomor resi: ' . $tracking . '.';
+    }
 
     $after = null;
     $file = __DIR__ . '/../../config/email.php';
