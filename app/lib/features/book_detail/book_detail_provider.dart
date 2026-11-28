@@ -1,7 +1,7 @@
 import 'package:flutter/widgets.dart';
 
 import '../../models/book.dart';
-import '../../repositories/book_repository.dart';
+import '../../repositories/api_book_repository.dart';
 
 class BookDetailProvider extends ChangeNotifier {
   static const _notFoundMessage = 'Book not found';

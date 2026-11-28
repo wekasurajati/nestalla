@@ -24,7 +24,6 @@ class ApiReviewRepository implements ReviewRepository {
         'book_id': review.bookId,
         'rating': review.rating,
         'message': review.comment,
-        'is_anonymous': review.anonymous,
       },
     );
   }

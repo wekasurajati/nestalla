@@ -250,7 +250,7 @@ class CartProvider extends ChangeNotifier {
   int selectedTotal(List<Book> books) {
     final byId = <int, int>{};
     for (final book in books) {
-      byId[book.id] = book.price;
+      byId[book.id] = book.sellingPrice;
     }
     var total = 0;
     for (final id in _selectedIds) {

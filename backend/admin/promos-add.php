@@ -26,6 +26,34 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     ':usage_limit' => $d['usage_limit'], ':is_active' => $d['is_active'],
                 ]);
                 flash('success', 'Kode promo ' . $d['code'] . ' berhasil dibuat.');
+
+                // Buat notifikasi promotion ke semua user sebelum redirect
+                try {
+                    $typeLabel = $d['type'] === 'percentage' ? 'Diskon Produk' : 'Gratis Ongkir';
+                    $valueFormat = $d['type'] === 'percentage'
+                        ? $d['value'] . '%'
+                        : 'Rp. ' . number_format((float) $d['value'], 0, ',', '.');
+                    $validUntil = date('d M Y', strtotime($d['valid_until']));
+
+                    $title = 'Ada voucher baru nih untukmu!';
+                    $message = "Gunakan Kode {$d['code']} untuk mendapatkan diskon {$typeLabel} sebesar {$valueFormat} sebelum tanggal {$validUntil}.";
+
+                    $userStmt = $conn->query('SELECT user_id FROM users');
+                    while ($u = $userStmt->fetch(PDO::FETCH_ASSOC)) {
+                        $nStmt = $conn->prepare("
+                            INSERT INTO notifications (user_id, title, message, type, is_read, created_at)
+                            VALUES (:uid, :title, :message, 'promotion', 0, NOW())
+                        ");
+                        $nStmt->execute([
+                            ':uid' => (int) $u['user_id'],
+                            ':title' => $title,
+                            ':message' => $message,
+                        ]);
+                    }
+                } catch (Exception $e) {
+                    error_log('[admin] notifikasi promo: ' . $e->getMessage());
+                }
+
                 header('Location: promos.php');
                 exit;
             } catch (PDOException $ex) {

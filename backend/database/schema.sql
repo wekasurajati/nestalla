@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: 127.0.0.1
--- Waktu pembuatan: 20 Nov 2026 pada 02.00
+-- Waktu pembuatan: 24 Nov 2026 pada 11.07
 -- Versi server: 10.11.16-MariaDB
 -- Versi PHP: 8.5.12
 
@@ -79,6 +79,22 @@ CREATE TABLE `cart` (
 -- --------------------------------------------------------
 
 --
+-- Struktur dari tabel `notifications`
+--
+
+CREATE TABLE `notifications` (
+  `id` int(11) NOT NULL,
+  `user_id` int(11) NOT NULL,
+  `title` varchar(150) NOT NULL,
+  `message` text NOT NULL,
+  `type` enum('account','order','promotion','general') NOT NULL DEFAULT 'general',
+  `is_read` tinyint(1) NOT NULL DEFAULT 0,
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+-- --------------------------------------------------------
+
+--
 -- Struktur dari tabel `orders`
 --
 
@@ -88,6 +104,7 @@ CREATE TABLE `orders` (
   `promo_id` int(11) DEFAULT NULL,
   `address_id` int(11) DEFAULT NULL,
   `shipping_carrier_id` int(11) DEFAULT NULL,
+  `tracking_number` varchar(100) DEFAULT NULL,
   `order_number` varchar(50) NOT NULL,
   `payment_method` enum('bank','ewallet','cod','credit','midtrans') NOT NULL DEFAULT 'cod',
   `shipping_cost` decimal(12,0) NOT NULL DEFAULT 0,
@@ -96,13 +113,36 @@ CREATE TABLE `orders` (
   `total_amount` decimal(12,0) NOT NULL DEFAULT 0,
   `notes` text DEFAULT NULL,
   `status` enum('pending','processing','shipped','completed','cancelled') NOT NULL DEFAULT 'pending',
-  `payment_status` enum('pending','paid','failed','expired') NOT NULL DEFAULT 'pending',
+  `payment_status` enum('pending','paid','failed','expired','cancelled') NOT NULL DEFAULT 'pending',
   `snap_token` varchar(255) DEFAULT NULL,
   `snap_redirect_url` varchar(500) DEFAULT NULL,
   `merchant_order_id` varchar(100) DEFAULT NULL,
   `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
   `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
 ) ;
+
+--
+-- Trigger `orders`
+--
+DELIMITER $$
+CREATE TRIGGER `trg_order_status_update` BEFORE UPDATE ON `orders` FOR EACH ROW BEGIN
+    IF NEW.payment_status <> OLD.payment_status THEN
+        CASE NEW.payment_status
+            WHEN 'pending' THEN
+                SET NEW.status = 'pending';
+            WHEN 'paid' THEN
+                SET NEW.status = 'processing';
+            WHEN 'failed' THEN
+                SET NEW.status = 'cancelled';
+            WHEN 'expired' THEN
+                SET NEW.status = 'cancelled';
+            ELSE
+                SET NEW.status = OLD.status;
+        END CASE;
+    END IF;
+END
+$$
+DELIMITER ;
 
 -- --------------------------------------------------------
 
@@ -115,7 +155,8 @@ CREATE TABLE `order_items` (
   `order_id` int(11) NOT NULL,
   `book_id` int(11) NOT NULL,
   `quantity` int(11) NOT NULL DEFAULT 1,
-  `price` decimal(12,0) NOT NULL
+  `price` decimal(12,0) NOT NULL,
+  `discount` decimal(12,0) NOT NULL DEFAULT 0
 ) ;
 
 -- --------------------------------------------------------
@@ -227,6 +268,24 @@ CREATE TABLE `users` (
   `avatar` varchar(255) DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
+--
+-- Trigger `users`
+--
+DELIMITER $$
+CREATE TRIGGER `trg_notifications_welcome` AFTER INSERT ON `users` FOR EACH ROW BEGIN
+  INSERT INTO `notifications` (`user_id`, `title`, `message`, `type`, `is_read`, `created_at`)
+  VALUES (
+    NEW.user_id,
+    'Akun berhasil dibuat',
+    CONCAT('Selamat datang di Nestalla, ', NEW.full_name, '. Akunmu sudah aktif dan siap digunakan.'),
+    'account',
+    0,
+    NOW()
+  );
+END
+$$
+DELIMITER ;
+
 -- --------------------------------------------------------
 
 --
@@ -305,6 +364,13 @@ ALTER TABLE `cart`
   ADD PRIMARY KEY (`cart_id`),
   ADD UNIQUE KEY `uq_cart_user_book` (`user_id`,`book_id`),
   ADD KEY `fk_cart_book` (`book_id`);
+
+--
+-- Indeks untuk tabel `notifications`
+--
+ALTER TABLE `notifications`
+  ADD PRIMARY KEY (`id`),
+  ADD KEY `idx_notifications_user_created` (`user_id`,`created_at`);
 
 --
 -- Indeks untuk tabel `orders`
@@ -420,6 +486,12 @@ ALTER TABLE `cart`
   MODIFY `cart_id` int(11) NOT NULL AUTO_INCREMENT;
 
 --
+-- AUTO_INCREMENT untuk tabel `notifications`
+--
+ALTER TABLE `notifications`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
+
+--
 -- AUTO_INCREMENT untuk tabel `orders`
 --
 ALTER TABLE `orders`
@@ -501,6 +573,12 @@ ALTER TABLE `api_tokens`
 ALTER TABLE `cart`
   ADD CONSTRAINT `fk_cart_book` FOREIGN KEY (`book_id`) REFERENCES `books` (`book_id`) ON DELETE CASCADE ON UPDATE CASCADE,
   ADD CONSTRAINT `fk_cart_user` FOREIGN KEY (`user_id`) REFERENCES `users` (`user_id`) ON DELETE CASCADE ON UPDATE CASCADE;
+
+--
+-- Ketidakleluasaan untuk tabel `notifications`
+--
+ALTER TABLE `notifications`
+  ADD CONSTRAINT `fk_notifications_user` FOREIGN KEY (`user_id`) REFERENCES `users` (`user_id`) ON DELETE CASCADE;
 
 --
 -- Ketidakleluasaan untuk tabel `orders`

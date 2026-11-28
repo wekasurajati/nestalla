@@ -1,12 +1,10 @@
 import 'package:flutter/material.dart';
-import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
 
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_radius.dart';
 import '../../providers/auth_provider.dart';
-import '../../widgets/back_button.dart';
 import '../../widgets/user_avatar.dart';
 
 class UserProfilePage extends StatefulWidget {
@@ -19,6 +17,7 @@ class UserProfilePage extends StatefulWidget {
 class _UserProfilePageState extends State<UserProfilePage> {
   final _formKey = GlobalKey<FormState>();
 
+  final _usernameCtrl = TextEditingController();
   final _nameCtrl = TextEditingController();
   final _emailCtrl = TextEditingController();
   final _phoneCtrl = TextEditingController();
@@ -32,6 +31,7 @@ class _UserProfilePageState extends State<UserProfilePage> {
   void initState() {
     super.initState();
     final user = context.read<AuthProvider>().user ?? {};
+    _usernameCtrl.text = (user['username'] as String?) ?? '';
     _nameCtrl.text = (user['full_name'] as String?) ?? '';
     _emailCtrl.text = (user['email'] as String?) ?? '';
     _phoneCtrl.text = (user['phone'] as String?) ?? '';
@@ -48,6 +48,7 @@ class _UserProfilePageState extends State<UserProfilePage> {
 
   @override
   void dispose() {
+    _usernameCtrl.dispose();
     _nameCtrl.dispose();
     _emailCtrl.dispose();
     _phoneCtrl.dispose();
@@ -90,6 +91,7 @@ class _UserProfilePageState extends State<UserProfilePage> {
     setState(() => _isSaving = true);
     try {
       await context.read<AuthProvider>().updateProfile(
+        username: _usernameCtrl.text.trim(),
         fullName: _nameCtrl.text.trim(),
         phone: _phoneCtrl.text.trim().isEmpty ? null : _phoneCtrl.text.trim(),
         birthDate: _birthDate != null ? _server(_birthDate!) : null,
@@ -230,9 +232,8 @@ class _UserProfilePageState extends State<UserProfilePage> {
     } catch (e) {
       if (!mounted) return;
       final message = e.toString().replaceFirst('Exception: ', '');
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(message)),
-      );
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text(message)));
     } finally {
       if (mounted) setState(() => _isUploading = false);
     }
@@ -242,6 +243,13 @@ class _UserProfilePageState extends State<UserProfilePage> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.background,
+      appBar: AppBar(
+        centerTitle: true,
+        title: const Text(
+          'Profil Saya',
+          style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+        ),
+      ),
       body: SafeArea(
         child: Center(
           child: ConstrainedBox(
@@ -249,31 +257,24 @@ class _UserProfilePageState extends State<UserProfilePage> {
             child: ListView(
               padding: const EdgeInsets.all(16),
               children: [
-                Row(
-                  children: [
-                    AppBackButton(onPressed: () => context.pop()),
-                    const SizedBox(width: 12),
-                    const Expanded(
-                      child: Center(
-                        child: Text(
-                          'Profil Saya',
-                          style: TextStyle(
-                            fontSize: 20,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 52),
-                  ],
-                ),
-                const SizedBox(height: 40),
                 _avatar(),
                 const SizedBox(height: 32),
                 Form(
                   key: _formKey,
                   child: Column(
                     children: [
+                      _labeled(
+                        'Username',
+                        TextFormField(
+                          controller: _usernameCtrl,
+                          textCapitalization: TextCapitalization.none,
+                          decoration: _fieldDecoration(),
+                          validator: (v) => (v == null || v.trim().isEmpty)
+                              ? 'Username wajib diisi'
+                              : null,
+                        ),
+                      ),
+                      const SizedBox(height: 16),
                       _labeled(
                         'Nama lengkap',
                         TextFormField(

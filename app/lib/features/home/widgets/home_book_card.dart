@@ -36,7 +36,7 @@ class HomeBookCard extends StatelessWidget {
                     height: width * 3 / 2,
                     fit: BoxFit.cover,
                   ),
-                  if (book.oldPrice != null)
+                  if (book.isDiscount && book.oldPrice != null)
                     Positioned(
                       top: 8,
                       left: 8,
@@ -66,12 +66,13 @@ class HomeBookCard extends StatelessWidget {
                 ),
               ),
               const SizedBox(height: 4),
-              RatingLabel(
-                rating: book.rating,
-                iconSize: 12,
-                fontSize: 10,
-                color: AppColors.dark.withValues(alpha: 0.7),
-              ),
+              if (book.rating > 0)
+                RatingLabel(
+                  rating: book.rating,
+                  iconSize: 12,
+                  fontSize: 10,
+                  color: AppColors.dark.withValues(alpha: 0.7),
+                ),
               const SizedBox(height: 4),
               Wrap(
                 spacing: 4,
@@ -79,18 +80,18 @@ class HomeBookCard extends StatelessWidget {
                 crossAxisAlignment: WrapCrossAlignment.center,
                 children: [
                   Text(
-                    formatRupiah(book.price),
+                    formatRupiah(book.sellingPrice),
                     style: const TextStyle(
-                      fontSize: 12,
+                      fontSize: 11,
                       fontWeight: FontWeight.bold,
                       color: AppColors.navy,
                     ),
                   ),
-                  if (book.oldPrice != null)
+                  if (book.isDiscount && book.oldPrice != null)
                     Text(
                       formatRupiah(book.oldPrice!),
                       style: TextStyle(
-                        fontSize: 10,
+                        fontSize: 9,
                         color: AppColors.dark.withValues(alpha: 0.5),
                         decoration: TextDecoration.lineThrough,
                       ),
@@ -112,11 +113,10 @@ class _DiscountBadge extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final oldPrice = book.oldPrice;
-    if (oldPrice == null || oldPrice <= book.price) {
+    final percent = book.discountPercent;
+    if (percent == 0 || book.oldPrice == null) {
       return const SizedBox.shrink();
     }
-    final percent = ((oldPrice - book.price) / oldPrice * 100).round();
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),

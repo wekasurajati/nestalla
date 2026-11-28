@@ -3,14 +3,19 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 
 import '../models/app_notification.dart';
+import '../features/notifications/models/order_notification.dart';
 import '../repositories/notification_repository.dart';
+import '../features/orders/api_order_repository.dart';
 import 'auth_provider.dart';
 
 class NotificationProvider extends ChangeNotifier {
   NotificationProvider(this._auth, this._repo) {
     _lastToken = _auth.token;
     _auth.addListener(_onAuthChanged);
-    if (_lastToken != null) unawaited(load());
+    // Tidak memanggil load() secara otomatis di konstruktor agar notifikasi
+    // lokal (mis. sambutan saat daftar) tidak terhapus ketika aplikasi dibuka
+    // ulang dengan token yang tersimpan. Backend tidak lagi menyimpan tabel
+    // notifikasi, jadi load() selalu mengembalikan daftar kosong.
   }
 
   final AuthProvider _auth;
@@ -29,6 +34,13 @@ class NotificationProvider extends ChangeNotifier {
 
   String? get error => _error;
 
+  final List<OrderNotification> _orderNotifications = <OrderNotification>[];
+  String? _orderError;
+
+  List<OrderNotification> get orderNotifications => List.unmodifiable(_orderNotifications);
+
+  String? get orderError => _orderError;
+
   @override
   void dispose() {
     _auth.removeListener(_onAuthChanged);
@@ -46,7 +58,7 @@ class NotificationProvider extends ChangeNotifier {
       notifyListeners();
       return;
     }
-    unawaited(load());
+    load();
   }
 
   Future<void> load() async {
@@ -78,9 +90,11 @@ class NotificationProvider extends ChangeNotifier {
 
   Future<void> refresh() => load();
 
-  Future<void> add(AppNotification _) async {
+  Future<void> add(AppNotification notification) async {
     if (_auth.token == null) return;
-    await load();
+    _items.insert(0, notification);
+    _error = null;
+    notifyListeners();
   }
 
   Future<void> markAsRead(String id) async {
@@ -142,4 +156,19 @@ class NotificationProvider extends ChangeNotifier {
 
   static String _message(Object error) =>
       error.toString().replaceFirst('Exception: ', '');
+
+  Future<void> loadOrderNotifications(String token) async {
+    final orderRepo = ApiOrderRepository(_auth);
+    try {
+      final fetched = await orderRepo.getOrderNotifications(token);
+      _orderNotifications
+        ..clear()
+        ..addAll(fetched);
+      _orderError = null;
+      notifyListeners();
+    } catch (e) {
+      _orderError = _message(e);
+      notifyListeners();
+    }
+  }
 }

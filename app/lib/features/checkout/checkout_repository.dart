@@ -3,7 +3,7 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 
 import '../../core/config/api_config.dart';
-import '../../repositories/book_repository.dart';
+import '../../repositories/api_book_repository.dart';
 import 'checkout_models.dart';
 
 abstract class CheckoutRepository {
@@ -48,9 +48,7 @@ class ApiCheckoutRepository implements CheckoutRepository {
   Uri _promoUri([String query = '']) =>
       Uri.parse('${ApiConfig.baseUrl}/promo.php$query');
 
-  Map<String, String> get _headers => {
-        'Content-Type': 'application/json',
-      };
+  Map<String, String> get _headers => {'Content-Type': 'application/json'};
 
   @override
   Future<CheckoutData> getCheckoutData() async {
@@ -75,10 +73,9 @@ class ApiCheckoutRepository implements CheckoutRepository {
         ? '?${queryParams.entries.map((e) => '${e.key}=${Uri.encodeComponent(e.value)}').join('&')}'
         : '';
 
-    final res = await http.get(
-      _shippingUri(query),
-      headers: _headers,
-    ).timeout(const Duration(seconds: 10));
+    final res = await http
+        .get(_shippingUri(query), headers: _headers)
+        .timeout(const Duration(seconds: 10));
 
     if (res.statusCode != 200) {
       throw Exception('Gagal memuat data ekspedisi');
@@ -107,11 +104,9 @@ class ApiCheckoutRepository implements CheckoutRepository {
       'shipping_cost': shippingCost,
     });
 
-    final res = await http.post(
-      _promoUri(),
-      headers: _headers,
-      body: body,
-    ).timeout(const Duration(seconds: 10));
+    final res = await http
+        .post(_promoUri(), headers: _headers, body: body)
+        .timeout(const Duration(seconds: 10));
 
     if (res.statusCode != 200) {
       final errorJson = jsonDecode(res.body) as Map<String, dynamic>;
@@ -137,20 +132,22 @@ class ApiCheckoutRepository implements CheckoutRepository {
     final body = jsonEncode({
       'address_id': addressId,
       'payment_method': paymentMethod,
-      'items': items.map((item) => {
-        'book_id': item.book.id,
-        'quantity': item.quantity,
-        'price': item.book.price,
-      }).toList(),
+      'items': items
+          .map(
+            (item) => {
+              'book_id': item.book.id,
+              'quantity': item.quantity,
+              'price': item.book.sellingPrice,
+            },
+          )
+          .toList(),
       if (promoCode != null) 'promo_code': promoCode,
       if (notes != null) 'notes': notes,
     });
 
-    final res = await http.post(
-      _uri(),
-      headers: _headers,
-      body: body,
-    ).timeout(const Duration(seconds: 10));
+    final res = await http
+        .post(_uri(), headers: _headers, body: body)
+        .timeout(const Duration(seconds: 10));
 
     if (res.statusCode != 200) {
       throw Exception('Gagal membuat pesanan');

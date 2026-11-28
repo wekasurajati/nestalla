@@ -297,12 +297,14 @@ class _InfoRow extends StatelessWidget {
       spacing: 12,
       runSpacing: 6,
       children: [
-        RatingLabel(
-          rating: book.rating,
-          iconSize: 16,
-          fontSize: 12,
-          color: AppColors.dark,
-        ),
+        if (book.reviews.isNotEmpty) ...[
+          RatingLabel(
+            rating: book.rating,
+            iconSize: 16,
+            fontSize: 12,
+            color: AppColors.dark,
+          ),
+        ],
         Text(book.category, style: textStyle),
         if (book.ageRating != null) Text(book.ageRating!, style: textStyle),
         if (book.publishedYear != null)
@@ -326,14 +328,14 @@ class _PriceRow extends StatelessWidget {
       runSpacing: 4,
       children: [
         Text(
-          formatRupiah(book.price),
+          formatRupiah(book.sellingPrice),
           style: const TextStyle(
             fontSize: 24,
             fontWeight: FontWeight.bold,
             color: AppColors.navy,
           ),
         ),
-        if (book.oldPrice != null)
+        if (book.isDiscount && book.oldPrice != null)
           Text(
             formatRupiah(book.oldPrice!),
             style: TextStyle(

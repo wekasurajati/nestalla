@@ -77,11 +77,11 @@ function book_read_input(array $src)
     if ($len($d['age_rating']) > 10) { $errors[] = 'Klasifikasi usia maksimal 10 karakter.'; }
 
     $price = $text('price');
-    if ($price === '' || !is_numeric($price) || $price < 0) { $errors[] = 'Harga wajib berupa angka 0 atau lebih.'; }
+    if ($price === '' || !is_numeric($price) || $price < 0 || $price > 100) { $errors[] = 'Diskon wajib berupa angka 0 sampai 100 (persen).'; }
     $d['price'] = is_numeric($price) ? (int) round($price) : 0;
 
     $old = $text('old_price');
-    if ($old !== '' && (!is_numeric($old) || $old < 0)) { $errors[] = 'Harga coret harus berupa angka 0 atau lebih.'; }
+    if ($old !== '' && (!is_numeric($old) || $old < 0)) { $errors[] = 'Harga asli harus berupa angka 0 atau lebih.'; }
     $d['old_price'] = ($old !== '' && is_numeric($old) && $old > 0) ? (int) round($old) : null;
 
     $stock = $text('stock');
@@ -142,13 +142,13 @@ function render_book_form(array $b, array $categories, $currentImage, $submitLab
                     </div>
                     <div class="row">
                         <div class="col-md-6 form-group">
-                            <label for="price">Harga (Rp) <span class="nv-req">*</span></label>
-                            <input type="number" id="price" name="price" class="form-control" min="0" step="1" required value="<?php echo e($b['price'] ?? ''); ?>">
+                            <label for="price">Diskon (%) <span class="nv-req">*</span></label>
+                            <input type="number" id="price" name="price" class="form-control" min="0" max="100" step="1" required value="<?php echo e($b['price'] ?? ''); ?>">
                         </div>
                         <div class="col-md-6 form-group">
-                            <label for="old_price">Harga sebelum diskon (Rp)</label>
+                            <label for="old_price">Harga asli (Rp)</label>
                             <input type="number" id="old_price" name="old_price" class="form-control" min="0" step="1" value="<?php echo e($b['old_price'] ?? ''); ?>">
-                            <span class="nv-help">Dicoret di aplikasi. Kosongkan bila tidak ada diskon.</span>
+                            <span class="nv-help">Harga dasar sebelum diskon dihitung. Kosongkan bila tidak ada diskon.</span>
                         </div>
                     </div>
                     <div class="row">

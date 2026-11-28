@@ -4,6 +4,7 @@ import 'package:http/http.dart' as http;
 
 import '../core/config/api_config.dart';
 import '../features/orders/order.dart';
+import '../features/notifications/models/order_notification.dart';
 
 abstract class OrderRepository {
   Future<List<Order>> getOrders({required String token});
@@ -22,6 +23,8 @@ abstract class OrderRepository {
     required String token,
     required int orderId,
   });
+
+  Future<List<OrderNotification>> getOrderNotifications(String token);
 }
 
 class ApiOrderRepository implements OrderRepository {
@@ -146,5 +149,29 @@ class ApiOrderRepository implements OrderRepository {
     final data = json['data'] as Map<String, dynamic>;
 
     return Order.fromJson(data);
+  }
+
+  @override
+  Future<List<OrderNotification>> getOrderNotifications(String token) async {
+    final res = await http.get(
+      _uri('?action=notifications'),
+      headers: _headers(token),
+    ).timeout(
+      _timeout,
+      onTimeout: () => throw Exception('Waktu permintaan habis. Periksa koneksi.'),
+    );
+
+    final json = jsonDecode(res.body) as Map<String, dynamic>;
+    if (res.statusCode != 200) {
+      throw Exception(json['message'] ?? 'Gagal memuat notifikasi pesanan');
+    }
+    if (json['status'] != 'success') {
+      throw Exception(json['message'] ?? 'Gagal memuat notifikasi pesanan');
+    }
+
+    final items = json['data']['items'] as List<dynamic>? ?? const [];
+    return items
+        .map((e) => OrderNotification.fromJson(e as Map<String, dynamic>))
+        .toList();
   }
 }

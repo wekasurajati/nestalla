@@ -4,7 +4,8 @@ import 'package:provider/provider.dart';
 import '../../core/theme/app_colors.dart';
 import '../../models/book.dart';
 import '../../providers/wishlist_provider.dart';
-import '../../repositories/book_repository.dart';
+import '../../repositories/api_book_repository.dart';
+import '../home/widgets/home_genre_filter.dart';
 import 'widgets/empty_wishlist_view.dart';
 import 'widgets/wishlist_card.dart';
 import 'widgets/wishlist_list_tile.dart';
@@ -77,11 +78,11 @@ class _WishlistPageState extends State<WishlistPage> {
                     .where((book) => book.category == selectedCategory)
                     .toList();
 
-          return Column(
+              return Column(
             children: [
-              _CategoryFilter(
-                categories: categories,
-                selected: selectedCategory,
+              HomeGenreFilter(
+                genres: categories,
+                selectedGenre: selectedCategory,
                 onSelected: (category) =>
                     setState(() => _selectedCategory = category),
               ),
@@ -159,75 +160,6 @@ class _WishlistPageState extends State<WishlistPage> {
       separatorBuilder: (_, _) => const SizedBox(height: 12),
       itemBuilder: (context, index) =>
           WishlistListTile(book: books[index], index: index),
-    );
-  }
-}
-
-class _CategoryFilter extends StatelessWidget {
-  final List<String> categories;
-  final String? selected;
-  final ValueChanged<String?> onSelected;
-
-  const _CategoryFilter({
-    required this.categories,
-    required this.selected,
-    required this.onSelected,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return SizedBox(
-      height: 52,
-      child: ListView(
-        scrollDirection: Axis.horizontal,
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-        children: [
-          _CategoryChip(
-            label: 'Semua',
-            selected: selected == null,
-            onTap: () => onSelected(null),
-          ),
-          for (final category in categories) ...[
-            const SizedBox(width: 8),
-            _CategoryChip(
-              label: category,
-              selected: selected == category,
-              onTap: () => onSelected(category),
-            ),
-          ],
-        ],
-      ),
-    );
-  }
-}
-
-class _CategoryChip extends StatelessWidget {
-  final String label;
-  final bool selected;
-  final VoidCallback onTap;
-
-  const _CategoryChip({
-    required this.label,
-    required this.selected,
-    required this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return ChoiceChip(
-      label: Text(label),
-      selected: selected,
-      onSelected: (_) => onTap(),
-      selectedColor: AppColors.navy,
-      backgroundColor: AppColors.background,
-      side: BorderSide(color: selected ? AppColors.navy : AppColors.lightBlue),
-      labelStyle: TextStyle(
-        color: selected ? AppColors.background : AppColors.navy,
-        fontWeight: FontWeight.w600,
-        fontSize: 12,
-      ),
-      showCheckmark: false,
-      materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
     );
   }
 }

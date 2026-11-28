@@ -16,6 +16,7 @@ class BookListTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final effectiveDiscount = discountPercent ?? book.discountPercent;
     return Material(
       type: MaterialType.transparency,
       child: InkWell(
@@ -85,14 +86,14 @@ class BookListTile extends StatelessWidget {
                       crossAxisAlignment: WrapCrossAlignment.center,
                       children: [
                         Text(
-                          formatRupiah(book.price),
+                          formatRupiah(book.sellingPrice),
                           style: const TextStyle(
                             fontSize: 14,
                             fontWeight: FontWeight.bold,
                             color: AppColors.navy,
                           ),
                         ),
-                        if (discountPercent != null)
+                        if (effectiveDiscount > 0)
                           Container(
                             padding: const EdgeInsets.symmetric(
                               horizontal: 6,
@@ -103,7 +104,7 @@ class BookListTile extends StatelessWidget {
                               borderRadius: AppRadius.border,
                             ),
                             child: Text(
-                              '-$discountPercent%',
+                              '-$effectiveDiscount%',
                               style: const TextStyle(
                                 fontSize: 10,
                                 fontWeight: FontWeight.bold,
@@ -111,7 +112,7 @@ class BookListTile extends StatelessWidget {
                               ),
                             ),
                           ),
-                        if (book.oldPrice != null)
+                        if (book.isDiscount && book.oldPrice != null)
                           Text(
                             formatRupiah(book.oldPrice!),
                             style: TextStyle(

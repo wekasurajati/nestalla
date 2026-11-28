@@ -10,7 +10,7 @@ import '../../models/book.dart';
 import '../../providers/address_provider.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/cart_provider.dart';
-import '../../repositories/book_repository.dart';
+import '../../repositories/api_book_repository.dart';
 import '../../widgets/address_card.dart';
 import '../../widgets/book_list_tile.dart';
 import 'checkout_models.dart';
@@ -145,7 +145,7 @@ class _CheckoutPageState extends State<CheckoutPage>
     int subtotal = 0;
     for (final id in cart.selectedIds.where(byId.containsKey)) {
       final book = byId[id]!;
-      subtotal += book.price * cart.quantityOf(id);
+      subtotal += book.sellingPrice * cart.quantityOf(id);
     }
 
     final shippingCost = _selectedShipping?.price ?? 0;
@@ -169,7 +169,9 @@ class _CheckoutPageState extends State<CheckoutPage>
     if (_selectedAddress == null) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Silakan pilih alamat pengiriman terlebih dahulu.')),
+          const SnackBar(
+            content: Text('Silakan pilih alamat pengiriman terlebih dahulu.'),
+          ),
         );
       }
       return;
@@ -177,7 +179,9 @@ class _CheckoutPageState extends State<CheckoutPage>
     if (_selectedShipping == null) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Silakan pilih metode pengiriman terlebih dahulu.')),
+          const SnackBar(
+            content: Text('Silakan pilih metode pengiriman terlebih dahulu.'),
+          ),
         );
       }
       return;
@@ -207,10 +211,7 @@ class _CheckoutPageState extends State<CheckoutPage>
       }
 
       final items = selectedIds.map((id) {
-        return (
-          bookId: id,
-          quantity: cart.quantityOf(id),
-        );
+        return (bookId: id, quantity: cart.quantityOf(id));
       }).toList();
 
       final repository = context.read<OrderRepository>();
@@ -237,15 +238,15 @@ class _CheckoutPageState extends State<CheckoutPage>
       final orderId = orderIdValue is int
           ? orderIdValue
           : (orderIdValue is num
-              ? orderIdValue.toInt()
-              : (orderIdValue is String ? int.tryParse(orderIdValue) ?? 0 : 0));
+                ? orderIdValue.toInt()
+                : (orderIdValue is String
+                      ? int.tryParse(orderIdValue) ?? 0
+                      : 0));
       if (!mounted) return;
 
       final paymentResult = await Navigator.of(context).push<bool>(
         MaterialPageRoute(
-          builder: (context) => PaymentWebViewPage(
-            redirectUrl: redirectUrl,
-          ),
+          builder: (context) => PaymentWebViewPage(redirectUrl: redirectUrl),
         ),
       );
 
@@ -292,7 +293,11 @@ class _CheckoutPageState extends State<CheckoutPage>
             default:
               if (mounted) {
                 ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Pesanan dibuat. Cek status di halaman Pesanan.')),
+                  const SnackBar(
+                    content: Text(
+                      'Pesanan dibuat. Cek status di halaman Pesanan.',
+                    ),
+                  ),
                 );
                 context.go('/orders');
               }
@@ -310,7 +315,11 @@ class _CheckoutPageState extends State<CheckoutPage>
         // User menutup halaman pembayaran tanpa selesai
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Pesanan dibuat. Selesaikan pembayaran di halaman Pesanan.')),
+            const SnackBar(
+              content: Text(
+                'Pesanan dibuat. Selesaikan pembayaran di halaman Pesanan.',
+              ),
+            ),
           );
           context.go('/orders');
         }
@@ -318,17 +327,15 @@ class _CheckoutPageState extends State<CheckoutPage>
     } catch (e) {
       if (!mounted) return;
       final message = e.toString().replaceFirst('Exception: ', '');
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text(message)));
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text(message)));
     } finally {
       if (mounted) setState(() => _isPlacingOrder = false);
     }
   }
 
   int _platformDiscount(Book book, int quantity) {
-    if (book.oldPrice == null || book.oldPrice! <= book.price) return 0;
-    return (book.oldPrice! - book.price) * quantity;
+    return book.discountAmount * quantity;
   }
 
   int _getShippingCost() {
@@ -392,7 +399,7 @@ class _CheckoutPageState extends State<CheckoutPage>
           ),
           title: const Text(
             'Checkout',
-            style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+            style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
           ),
         ),
         body: ListView(
@@ -504,24 +511,18 @@ class _CheckoutPageState extends State<CheckoutPage>
                 }
 
                 int subtotal = 0;
-                int totalPlatformDiscount = 0;
                 int grandTotal = 0;
 
                 for (final id in selectedIds) {
                   final book = byId[id]!;
                   final qty = cart.quantityOf(id);
-                  subtotal += book.price * qty;
-                  totalPlatformDiscount += _platformDiscount(book, qty);
-                  grandTotal += book.price * qty;
+                  subtotal += book.sellingPrice * qty;
+                  grandTotal += book.sellingPrice * qty;
                 }
 
                 final shippingCost = _getShippingCost();
                 final voucherDiscount = _getVoucherDiscount();
-                final finalTotal =
-                    grandTotal -
-                    totalPlatformDiscount -
-                    voucherDiscount +
-                    shippingCost;
+                final finalTotal = grandTotal - voucherDiscount + shippingCost;
 
                 return SectionCard(
                   title: 'Detail Pesanan',
@@ -542,14 +543,6 @@ class _CheckoutPageState extends State<CheckoutPage>
                       const Divider(height: 1, color: AppColors.backCircle),
                       const SizedBox(height: 8),
                       _AmountRow(label: 'Subtotal', value: subtotal),
-                      if (totalPlatformDiscount > 0) ...[
-                        const SizedBox(height: 4),
-                        _AmountRow(
-                          label: 'Diskon Platform',
-                          value: -totalPlatformDiscount,
-                          color: Colors.green,
-                        ),
-                      ],
                       if (voucherDiscount > 0) ...[
                         const SizedBox(height: 4),
                         _AmountRow(
@@ -729,8 +722,11 @@ class _CheckoutPageState extends State<CheckoutPage>
                       ),
                     )
                   : const Text(
-                      'Lanjut Pilih Metode Pembayaran',
-                      style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+                      'Pilih Metode Pembayaran',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
+                      ),
                     ),
             ),
           ),
@@ -753,17 +749,15 @@ class _ItemDetail extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final lineTotal = book.price * quantity;
-    final originalTotal = (book.oldPrice ?? book.price) * quantity;
+    final lineTotal = book.sellingPrice * quantity;
+    final originalTotal = (book.oldPrice ?? book.sellingPrice) * quantity;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         BookListTile(
           book: book,
-          discountPercent: book.oldPrice != null && book.oldPrice! > book.price
-              ? ((book.oldPrice! - book.price) / book.oldPrice! * 100).round()
-              : null,
+          discountPercent: book.discountPercent > 0 ? book.discountPercent : null,
         ),
         const SizedBox(height: 8),
         Row(
@@ -801,7 +795,7 @@ class _ItemDetail extends StatelessWidget {
             ),
           ],
         ),
-        if (book.oldPrice != null && book.oldPrice! > book.price) ...[
+        if (book.isDiscount && book.oldPrice != null) ...[
           const SizedBox(height: 4),
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,

@@ -54,6 +54,7 @@ class AuthRepository {
   Future<Map<String, dynamic>> updateProfile(
     String token, {
     required String fullName,
+    String? username,
     String? phone,
     String? birthDate,
   }) async {
@@ -65,6 +66,7 @@ class AuthRepository {
       },
       body: jsonEncode({
         'full_name': fullName,
+        'username': username,
         'phone': phone,
         'birth_date': birthDate,
       }),

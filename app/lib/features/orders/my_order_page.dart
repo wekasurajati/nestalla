@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import '../../core/theme/app_colors.dart';
 import '../../providers/auth_provider.dart';
 import '../../repositories/order_repository.dart';
+import '../home/widgets/home_genre_filter.dart';
 import 'order.dart';
 import 'order_repository.dart';
 import 'widgets/order_card.dart';
@@ -65,10 +66,16 @@ class _MyOrderPageState extends State<MyOrderPage> {
 
           return Column(
             children: [
-              _StatusFilter(
-                selected: _selectedStatus,
-                onSelected: (status) =>
-                    setState(() => _selectedStatus = status),
+              HomeGenreFilter(
+                genres: OrderStatus.values.map((e) => e.label).toList(),
+                selectedGenre: _selectedStatus?.label,
+                onSelected: (label) => setState(() {
+                  _selectedStatus = label == null
+                      ? null
+                      : OrderStatus.values.firstWhere(
+                          (e) => e.label == label,
+                        );
+                }),
               ),
               Expanded(
                 child: visibleOrders.isEmpty
@@ -94,70 +101,6 @@ class _MyOrderPageState extends State<MyOrderPage> {
           );
         },
       ),
-    );
-  }
-}
-
-class _StatusFilter extends StatelessWidget {
-  final OrderStatus? selected;
-  final ValueChanged<OrderStatus?> onSelected;
-
-  const _StatusFilter({required this.selected, required this.onSelected});
-
-  @override
-  Widget build(BuildContext context) {
-    return SizedBox(
-      height: 52,
-      child: ListView(
-        scrollDirection: Axis.horizontal,
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-        children: [
-          _StatusChip(
-            label: 'Semua',
-            selected: selected == null,
-            onTap: () => onSelected(null),
-          ),
-          for (final status in OrderStatus.values) ...[
-            const SizedBox(width: 8),
-            _StatusChip(
-              label: status.label,
-              selected: selected == status,
-              onTap: () => onSelected(status),
-            ),
-          ],
-        ],
-      ),
-    );
-  }
-}
-
-class _StatusChip extends StatelessWidget {
-  final String label;
-  final bool selected;
-  final VoidCallback onTap;
-
-  const _StatusChip({
-    required this.label,
-    required this.selected,
-    required this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return ChoiceChip(
-      label: Text(label),
-      selected: selected,
-      onSelected: (_) => onTap(),
-      selectedColor: AppColors.blue,
-      backgroundColor: AppColors.lightBlue,
-      side: const BorderSide(color: AppColors.blue),
-      labelStyle: TextStyle(
-        color: selected ? AppColors.background : AppColors.navy,
-        fontWeight: FontWeight.w600,
-        fontSize: 12,
-      ),
-      showCheckmark: false,
-      materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
     );
   }
 }

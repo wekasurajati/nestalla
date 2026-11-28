@@ -91,11 +91,19 @@ include 'includes/sidebar.php';
                                     </div>
                                 </td>
                                 <td><?php echo badge('info', $b['category']); ?></td>
-                                <td data-order="<?php echo (float) $b['price']; ?>">
-                                    <strong><?php echo e(formatRupiah($b['price'])); ?></strong>
-                                    <?php if ((float) $b['old_price'] > 0): ?>
-                                        <br><small class="text-muted"><del><?php echo e(formatRupiah($b['old_price'])); ?></del></small>
-                                    <?php endif; ?>
+                                <td data-order="<?php echo (float) $b['old_price']; ?>">
+                                    <?php
+                                    $oldPrice = (float) ($b['old_price'] ?? 0);
+                                    $discountPercent = (float) ($b['price'] ?? 0);
+                                    if ($b['is_discount'] && $oldPrice > 0 && $discountPercent > 0) {
+                                        $sellingPrice = (int) round($oldPrice - ($oldPrice * $discountPercent / 100));
+                                        echo '<strong>' . e(formatRupiah($sellingPrice)) . '</strong>';
+                                        echo '<br><small class="text-muted"><del>' . e(formatRupiah($oldPrice)) . '</del></small>';
+                                    } else {
+                                        $displayPrice = $oldPrice > 0 ? $oldPrice : (float) ($b['price'] ?? 0);
+                                        echo '<strong>' . e(formatRupiah($displayPrice)) . '</strong>';
+                                    }
+                                    ?>
                                 </td>
                                 <td data-order="<?php echo (int) $b['stock']; ?>">
                                     <?php

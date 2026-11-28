@@ -4,7 +4,7 @@ import 'package:provider/provider.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_radius.dart';
 import '../../models/book.dart';
-import '../../repositories/book_repository.dart';
+import '../../repositories/api_book_repository.dart';
 import '../../widgets/header_action_buttons.dart';
 import 'widgets/search_result_tile.dart';
 

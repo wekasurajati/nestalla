@@ -7,7 +7,7 @@ import '../../core/theme/app_radius.dart';
 import '../../core/utils/currency.dart';
 import '../../models/book.dart';
 import '../../providers/cart_provider.dart';
-import '../../repositories/book_repository.dart';
+import '../../repositories/api_book_repository.dart';
 import '../../widgets/back_button.dart';
 import '../../widgets/book_list_tile.dart';
 
@@ -31,6 +31,12 @@ class _CartPageState extends State<CartPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.background,
+      appBar: AppBar(
+        title: const Text(
+          'Keranjang',
+          style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+        ),
+      ),
       body: SafeArea(
         child: FutureBuilder<List<Book>>(
           future: _booksFuture,
@@ -51,16 +57,12 @@ class _CartPageState extends State<CartPage> {
 
             if (cart.items.isEmpty) {
               return Column(
-                children: [
-                  _Header(onBack: () => context.pop()),
-                  const Expanded(child: _EmptyCartView()),
-                ],
+                children: [const Expanded(child: _EmptyCartView())],
               );
             }
 
             return Column(
               children: [
-                _Header(onBack: () => context.pop()),
                 _ControlBar(
                   cart: cart,
                   onRemoveSelected: () => _confirmRemoveSelected(cart),
@@ -102,38 +104,6 @@ class _CartPageState extends State<CartPage> {
     if (ok == true) {
       await cart.removeSelected();
     }
-  }
-}
-
-class _Header extends StatelessWidget {
-  final VoidCallback onBack;
-
-  const _Header({required this.onBack});
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      children: [
-        Padding(
-          padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
-          child: Row(
-            children: [
-              AppBackButton(onPressed: onBack),
-              const SizedBox(width: 12),
-              const Text(
-                'Keranjang',
-                style: TextStyle(
-                  fontSize: 20,
-                  fontWeight: FontWeight.bold,
-                  color: AppColors.dark,
-                ),
-              ),
-            ],
-          ),
-        ),
-        const Divider(height: 1, color: AppColors.grey),
-      ],
-    );
   }
 }
 
@@ -218,9 +188,7 @@ class _CartItem extends StatelessWidget {
   const _CartItem({required this.book, required this.cart});
 
   int _discountPercent() {
-    final old = book.oldPrice;
-    if (old == null || old <= 0) return 0;
-    return ((old - book.price) / old * 100).round();
+    return book.discountPercent;
   }
 
   @override
