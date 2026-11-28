@@ -97,6 +97,8 @@ class Order {
   final String recipientName;
   final String phone;
   final String address;
+  final String? trackingNumber;
+  final String? shippingCarrier;
   final List<OrderItem> items;
 
   const Order({
@@ -118,6 +120,8 @@ class Order {
     this.recipientName = '',
     this.phone = '',
     this.address = '',
+    this.trackingNumber,
+    this.shippingCarrier,
   });
 
   factory Order.fromJson(Map<String, dynamic> json) {
@@ -151,6 +155,8 @@ class Order {
       recipientName: json['recipient_name']?.toString() ?? '',
       phone: json['phone']?.toString() ?? '',
       address: address.isEmpty ? '' : address,
+      trackingNumber: json['tracking_number'] as String?,
+      shippingCarrier: json['carrier_name'] as String?,
       items: itemsList,
     );
   }
@@ -199,6 +205,8 @@ class Order {
   Order copyWith({
     OrderStatus? status,
     String? paymentMethod,
+    String? trackingNumber,
+    String? shippingCarrier,
   }) => Order(
     id: id,
     number: number,
@@ -217,6 +225,8 @@ class Order {
     recipientName: recipientName,
     phone: phone,
     address: address,
+    trackingNumber: trackingNumber ?? this.trackingNumber,
+    shippingCarrier: shippingCarrier ?? this.shippingCarrier,
     items: items,
   );
 }

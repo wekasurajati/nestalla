@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
@@ -145,6 +146,14 @@ class _OrderDetailPageState extends State<OrderDetailPage> {
       '/orders/${order.id}/review?book=${order.reviewableBookId}',
     );
     if (mounted) _reload();
+  }
+
+  Future<void> _copyResi(String resi) async {
+    await Clipboard.setData(ClipboardData(text: resi));
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('No. resi disalin ke clipboard')),
+    );
   }
 
   Widget? _bottomBar(Order order) {
@@ -322,6 +331,54 @@ class _OrderDetailPageState extends State<OrderDetailPage> {
                         color: AppColors.dark,
                       ),
                     ),
+                    const SizedBox(height: 12),
+                    _InfoRow(
+                      label: 'Ekspedisi',
+                      value: order.shippingCarrier ?? '-',
+                    ),
+                    const SizedBox(height: 4),
+                    if (order.trackingNumber != null &&
+                        order.trackingNumber!.isNotEmpty) ...[
+                      Text(
+                        'No. Resi:',
+                        style: const TextStyle(
+                          fontSize: 12,
+                          color: AppColors.backCircle,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Row(
+                        crossAxisAlignment: CrossAxisAlignment.center,
+                        children: [
+                          Expanded(
+                            child: Text(
+                              order.trackingNumber!,
+                              style: const TextStyle(
+                                fontSize: 13,
+                                fontWeight: FontWeight.w600,
+                                color: AppColors.dark,
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          OutlinedButton.icon(
+                            onPressed:
+                                _busy ? null : () => _copyResi(order.trackingNumber!),
+                            icon: const Icon(Icons.copy, size: 18),
+                            label: const Text(
+                              'Salin',
+                              style: TextStyle(fontSize: 12),
+                            ),
+                            style: OutlinedButton.styleFrom(
+                              minimumSize: Size.zero,
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 8,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
                   ],
                 ),
               ),

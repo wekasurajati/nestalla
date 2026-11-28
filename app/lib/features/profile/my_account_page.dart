@@ -16,7 +16,7 @@ class MyAccountPage extends StatefulWidget {
 }
 
 class _MyAccountPageState extends State<MyAccountPage> {
-  bool _notifOn = false;
+  bool _notifOn = true;
 
   void _segeraHadir() {
     // TODO: navigasi ke halaman tujuan

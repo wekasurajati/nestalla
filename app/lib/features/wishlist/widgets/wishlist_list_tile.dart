@@ -89,7 +89,7 @@ class WishlistListTile extends StatelessWidget {
                       crossAxisAlignment: WrapCrossAlignment.center,
                       children: [
                         Text(
-                          formatRupiah(book.price),
+                          formatRupiah(book.sellingPrice),
                           style: const TextStyle(
                             fontSize: 14,
                             fontWeight: FontWeight.bold,

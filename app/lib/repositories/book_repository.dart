@@ -24,7 +24,7 @@ class DummyBookRepository implements BookRepository {
           'Panduan membangun kebiasaan baik dan meninggalkan yang buruk. '
           'James Clear menjelaskan bagaimana perubahan kecil yang konsisten '
           'dapat menghasilkan hasil luar biasa dalam jangka panjang.',
-      price: 108000,
+      price: 14,
       oldPrice: 125000,
       image: 'assets/images/books/book_1.jpg',
       category: 'Self-improvement',
@@ -63,7 +63,7 @@ class DummyBookRepository implements BookRepository {
           'Buku tentang melepaskan kendali atas hal di luar diri kita. '
           'Mel Robbins membahas cara berhenti mengambil beban emosional '
           'orang lain dan mulai fokus pada hal yang bisa kita kendalikan.',
-      price: 95000,
+      price: 14,
       oldPrice: 110000,
       image: 'assets/images/books/book_2.jpg',
       category: 'Self-improvement',
@@ -96,7 +96,7 @@ class DummyBookRepository implements BookRepository {
           'Novel tentang aktivis dan masa kelam Indonesia. Kisah ini '
           'mengikuti perjalanan sekelompok mahasiswa yang hilang pada '
           '1998 dan keluarga yang terus mencari jawaban.',
-      price: 120000,
+      price: 14,
       oldPrice: 140000,
       image: 'assets/images/books/book_3.jpg',
       category: 'Fiction',
@@ -134,7 +134,8 @@ class DummyBookRepository implements BookRepository {
           'Kisah Minke di awal abad ke-20 yang berjuang di tengah kolonialisme. '
           'Novel pertama dari Tetralogi Buru ini menyoroti pendidikan, cinta, '
           'dan ketidakadilan sosial.',
-      price: 135000,
+      price: 0,
+      oldPrice: 135000,
       image: 'assets/images/books/book_3.jpg',
       category: 'Fiction',
       isFeatured: true,
@@ -150,7 +151,7 @@ class DummyBookRepository implements BookRepository {
       description:
           'Pengantar filsafat Stoa untuk kehidupan modern. Buku ini membantu '
           'pembaca mengelola emosi dan fokus pada hal yang bisa dikendalikan.',
-      price: 98000,
+      price: 15,
       oldPrice: 115000,
       image: 'assets/images/books/book_1.jpg',
       category: 'Self-improvement',
@@ -166,7 +167,7 @@ class DummyBookRepository implements BookRepository {
       description:
           'Bagaimana perilaku dan kebiasaan memengaruhi keputusan finansial. '
           'Buku ini menekankan bahwa uang lebih soal psikologi daripada rumus.',
-      price: 105000,
+      price: 19,
       oldPrice: 130000,
       image: 'assets/images/books/book_2.jpg',
       category: 'Business',
@@ -184,7 +185,8 @@ class DummyBookRepository implements BookRepository {
           'Sejarah singkat umat manusia, dari revolusi kognitif hingga '
           'revolusi sains. Buku ini menjelaskan bagaimana Homo sapiens '
           'mendominasi bumi.',
-      price: 150000,
+      price: 0,
+      oldPrice: 150000,
       image: 'assets/images/books/book_3.jpg',
       category: 'History',
       isFeatured: true,
@@ -199,7 +201,8 @@ class DummyBookRepository implements BookRepository {
       description:
           'Panduan menulis kode yang mudah dibaca dan dirawat. Berisi prinsip, '
           'contoh, dan studi kasus untuk menghasilkan perangkat lunak berkualitas.',
-      price: 180000,
+      price: 0,
+      oldPrice: 180000,
       image: 'assets/images/books/book_1.jpg',
       category: 'Technology',
       rating: 4.6,
@@ -213,7 +216,7 @@ class DummyBookRepository implements BookRepository {
       description:
           'Epik fiksi ilmiah tentang planet gurun Arrakis. Perjuangan Paul '
           'Atreides menyentuh tema kekuasaan, ekologi, dan takdir.',
-      price: 145000,
+      price: 12,
       oldPrice: 165000,
       image: 'assets/images/books/book_3.jpg',
       category: 'Fiction',
@@ -230,7 +233,8 @@ class DummyBookRepository implements BookRepository {
           'Perpustakaan di antara hidup dan mati menyimpan buku-buku tentang '
           'kemungkinan hidup yang tidak pernah dijalani. Kisah tentang penyesalan '
           'dan harapan.',
-      price: 115000,
+      price: 0,
+      oldPrice: 115000,
       image: 'assets/images/books/book_2.jpg',
       category: 'Fiction',
       isFeatured: true,
@@ -245,7 +249,7 @@ class DummyBookRepository implements BookRepository {
       description:
           'Panduan praktis mengatur pemasukan, tabungan, dan investasi untuk '
           'pemula. Dilengkapi contoh anggaran dan perencanaan tujuan keuangan.',
-      price: 88000,
+      price: 11,
       oldPrice: 99000,
       image: 'assets/images/books/book_1.jpg',
       category: 'Business',
@@ -261,7 +265,8 @@ class DummyBookRepository implements BookRepository {
       description:
           'Buku pegangan mahasiswa informatika tentang algoritma, struktur data, '
           'dan analisis kompleksitas dengan contoh implementasi.',
-      price: 125000,
+      price: 0,
+      oldPrice: 125000,
       image: 'assets/images/books/book_1.jpg',
       category: 'Technology',
       rating: 4.4,
@@ -275,7 +280,8 @@ class DummyBookRepository implements BookRepository {
       description:
           'Kisah perjalanan panjang seorang perempuan mencari makna cinta dan '
           'kehilangan dalam pelayaran penuh kenangan.',
-      price: 92000,
+      price: 0,
+      oldPrice: 92000,
       image: 'assets/images/books/book_3.jpg',
       category: 'Romance',
       rating: 4.5,
@@ -289,7 +295,8 @@ class DummyBookRepository implements BookRepository {
       description:
           'Cerita anak tentang persahabatan dan keberanian saat menjelajahi '
           'negeri di atas awan. Cocok untuk pembaca awal.',
-      price: 75000,
+      price: 0,
+      oldPrice: 75000,
       image: 'assets/images/books/book_2.jpg',
       category: 'Children',
       rating: 4.6,
@@ -304,7 +311,8 @@ class DummyBookRepository implements BookRepository {
       description:
           'Rekonstruksi sejarah Indonesia dari abad ke-13 hingga era reformasi, '
           'membahas politik, ekonomi, dan perubahan sosial.',
-      price: 165000,
+      price: 0,
+      oldPrice: 165000,
       image: 'assets/images/books/book_3.jpg',
       category: 'History',
       rating: 4.6,

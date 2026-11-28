@@ -10,4 +10,5 @@ class AppColors {
   static const background = Colors.white;
   static const star = Color(0xFFFFC107); // perkiraan, cek Figma
   static const backCircle = Color(0xFF9E9E9E); // perkiraan, cek Figma
+  static const darkSubtle = Color(0x993A3A4A); // dark dengan alpha 0.6
 }

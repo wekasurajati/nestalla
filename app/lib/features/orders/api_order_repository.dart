@@ -1,5 +1,7 @@
 import '../../providers/auth_provider.dart';
 import '../../repositories/api_client.dart';
+import '../../repositories/order_repository.dart';
+import '../notifications/models/order_notification.dart';
 import 'order.dart';
 import 'order_repository.dart';
 
@@ -103,5 +105,18 @@ class ApiOrderRepository implements OrderRepository {
       token: _token,
       body: {'order_id': id},
     );
+  }
+
+  @override
+  Future<List<OrderNotification>> getOrderNotifications(String token) async {
+    final json = await apiRequest(
+      'GET',
+      'orders.php?action=notifications',
+      token: token,
+    );
+    final items = json['items'] as List<dynamic>? ?? const [];
+    return items
+        .map((e) => OrderNotification.fromJson(e as Map<String, dynamic>))
+        .toList();
   }
 }

@@ -137,7 +137,7 @@ class ApiCheckoutRepository implements CheckoutRepository {
             (item) => {
               'book_id': item.book.id,
               'quantity': item.quantity,
-              'price': item.book.price,
+              'price': item.book.sellingPrice,
             },
           )
           .toList(),

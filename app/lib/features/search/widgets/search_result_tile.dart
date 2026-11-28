@@ -99,14 +99,14 @@ class SearchResultTile extends StatelessWidget {
                       crossAxisAlignment: WrapCrossAlignment.center,
                       children: [
                         Text(
-                          formatRupiah(book.price),
+                          formatRupiah(book.sellingPrice),
                           style: const TextStyle(
                             fontSize: 14,
                             fontWeight: FontWeight.bold,
                             color: AppColors.navy,
                           ),
                         ),
-                        if (book.oldPrice != null)
+                        if (book.isDiscount && book.oldPrice != null)
                           Text(
                             formatRupiah(book.oldPrice!),
                             style: TextStyle(

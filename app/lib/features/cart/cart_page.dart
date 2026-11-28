@@ -188,9 +188,7 @@ class _CartItem extends StatelessWidget {
   const _CartItem({required this.book, required this.cart});
 
   int _discountPercent() {
-    final old = book.oldPrice;
-    if (old == null || old <= 0) return 0;
-    return ((old - book.price) / old * 100).round();
+    return book.discountPercent;
   }
 
   @override

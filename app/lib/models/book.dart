@@ -37,6 +37,22 @@ class Book {
     this.reviews = const [],
   });
 
+  int get sellingPrice {
+    if (isDiscount && oldPrice != null && oldPrice! > 0 && price > 0) {
+      return oldPrice! - (oldPrice! * price / 100).round();
+    }
+    return oldPrice ?? 0;
+  }
+
+  int get discountAmount {
+    if (isDiscount && oldPrice != null && oldPrice! > 0 && price > 0) {
+      return (oldPrice! * price / 100).round();
+    }
+    return 0;
+  }
+
+  int get discountPercent => isDiscount ? price : 0;
+
   factory Book.fromJson(Map<String, dynamic> json) => Book(
         id: int.tryParse((json['book_id'] ?? json['id'] ?? '0').toString()) ?? 0,
         title: json['title'] as String,

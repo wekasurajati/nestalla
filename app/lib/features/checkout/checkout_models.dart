@@ -13,7 +13,7 @@ class CheckoutItem {
     this.unitPrice,
   });
 
-  int get lineTotal => (unitPrice ?? book.price) * quantity;
+  int get lineTotal => (unitPrice ?? book.sellingPrice) * quantity;
 }
 
 class CheckoutData {

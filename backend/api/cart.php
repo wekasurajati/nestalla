@@ -17,7 +17,7 @@ if (!$user_id) {
 if ($_SERVER['REQUEST_METHOD'] === 'GET') {
     
     try {
-        $query = "SELECT c.*, b.title, b.author, b.price, b.image, b.stock 
+        $query = "SELECT c.*, b.title, b.author, b.price, b.old_price, b.is_discount, b.image, b.stock 
                   FROM cart c 
                   JOIN books b ON c.book_id = b.book_id 
                   WHERE c.user_id = :user_id 
@@ -29,10 +29,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
         
         $cart_items = $stmt->fetchAll(PDO::FETCH_ASSOC);
         
-        // Calculate total
+        // Calculate total using selling price (after discount)
         $total = 0;
         foreach ($cart_items as $item) {
-            $total += $item['price'] * $item['quantity'];
+            $oldPrice = (float) ($item['old_price'] ?? 0);
+            $discountPercent = (float) ($item['price'] ?? 0);
+            if ($item['is_discount'] && $oldPrice > 0 && $discountPercent > 0) {
+                $sellingPrice = (int) round($oldPrice - ($oldPrice * $discountPercent / 100));
+            } else {
+                $sellingPrice = $oldPrice > 0 ? $oldPrice : (float) ($item['price'] ?? 0);
+            }
+            $total += $sellingPrice * $item['quantity'];
         }
         
         sendSuccess('Cart retrieved successfully', [

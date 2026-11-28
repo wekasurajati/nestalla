@@ -6,6 +6,25 @@ $database = new Database();
 $conn = $database->getConnection();
 
 // ========================================
+// FUNGSI BERSAMA: Buat notifikasi in-app untuk user
+// ========================================
+function createNotification($conn, $userId, $title, $message, $type = 'order') {
+    try {
+        $stmt = $conn->prepare("
+            INSERT INTO notifications (user_id, title, message, type, is_read, created_at)
+            VALUES (:uid, :title, :message, :type, 0, NOW())
+        ");
+        $stmt->bindValue(':uid', (int) $userId, PDO::PARAM_INT);
+        $stmt->bindValue(':title', $title);
+        $stmt->bindValue(':message', $message);
+        $stmt->bindValue(':type', $type);
+        $stmt->execute();
+    } catch (Exception $e) {
+        error_log('createNotification: ' . $e->getMessage());
+    }
+}
+
+// ========================================
 // FUNGSI BERSAMA: Terapkan status Midtrans ke order
 // ========================================
 function applyMidtransStatus($conn, $order, $midtrans) {
@@ -43,6 +62,14 @@ function applyMidtransStatus($conn, $order, $midtrans) {
         $stmt->bindParam(':pm', $paymentType);
     }
     $stmt->execute();
+
+    // Buat notifikasi saat status berubah
+    if ($changed && !empty($order['user_id'])) {
+        $statusLabel = orderStatusLabel($newOrderStatus);
+        $title = 'Status pesanan diperbarui';
+        $message = "Pesanan #{$order['order_number']} sekarang {$statusLabel}.";
+        createNotification($conn, $order['user_id'], $title, $message, 'order');
+    }
 
     // Saat PERTAMA KALI menjadi 'paid': kurangi stok dan naikkan used_count promo (idempotent)
     if ($changed && $newPaymentStatus === 'paid' && $order['payment_status'] !== 'paid') {
@@ -129,6 +156,22 @@ function expireStaleOrders($conn, $user_id = null) {
 }
 
 // ========================================
+// FUNGSI BERSAMA: Label status pesanan untuk tampilan
+// Sama dengan pemetaan di Flutter (order.dart): pending->Belum Dibayar,
+// processing->Dikemas, shipped->Dikirim, completed->Selesai, cancelled->Dibatalkan
+// ========================================
+function orderStatusLabel(string $status): string {
+    return match ($status) {
+        'pending' => 'Belum Dibayar',
+        'processing' => 'Dikemas',
+        'shipped' => 'Dikirim',
+        'completed' => 'Selesai',
+        'cancelled' => 'Dibatalkan',
+        default => 'Belum Dibayar',
+    };
+}
+
+// ========================================
 // UPDATE STATUS (Admin web UI - tetap)
 // ========================================
 if (isset($_POST['update_status'])) {
@@ -150,7 +193,7 @@ if (isset($_POST['update_status'])) {
         if ($stmt->execute()) {
             $user_email = $order_info['user_id'] ? null : null;
             if ($order_info && !empty($order_info['address_id'])) {
-                $addrStmt = $conn->prepare('SELECT ua.*, u.email, u.full_name FROM user_addresses ua JOIN users u ON ua.user_id = u.user_id WHERE ua.address_id = :aid');
+                $addrStmt = $conn->prepare('SELECT ua.*, u.email, u.full_name, u.user_id FROM user_addresses ua JOIN users u ON ua.user_id = u.user_id WHERE ua.address_id = :aid');
                 $addrStmt->bindParam(':aid', $order_info['address_id']);
                 $addrStmt->execute();
                 $addrInfo = $addrStmt->fetch(PDO::FETCH_ASSOC);
@@ -169,6 +212,16 @@ if (isset($_POST['update_status'])) {
                         error_log('Email error: ' . $e->getMessage());
                         $_SESSION['success'] = "Order status updated (email failed)";
                     }
+
+                    // Notifikasi in-app untuk user
+                    $statusLabel = orderStatusLabel($new_status);
+                    createNotification(
+                        $conn,
+                        $addrInfo['user_id'],
+                        'Status pesanan diperbarui',
+                        "Pesanan #{$order_info['order_number']} sekarang {$statusLabel}.",
+                        'order'
+                    );
                 }
             }
             $_SESSION['success'] = $_SESSION['success'] ?? "Order status updated!";
@@ -206,7 +259,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST'
         $conn->beginTransaction();
 
         // Kunci baris order supaya tidak bentrok dengan perubahan lain
-        $stmt = $conn->prepare('SELECT status FROM orders WHERE order_id = :oid AND user_id = :uid FOR UPDATE');
+        $stmt = $conn->prepare('SELECT status, order_number FROM orders WHERE order_id = :oid AND user_id = :uid FOR UPDATE');
         $stmt->bindParam(':oid', $order_id);
         $stmt->bindParam(':uid', $user_id);
         $stmt->execute();
@@ -234,6 +287,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST'
                             WHERE oi.order_id = :oid')
                  ->execute([':oid' => $order_id]);
 
+            createNotification(
+                $conn,
+                $user_id,
+                'Pesanan dibatalkan',
+                "Pesanan #{$order['order_number']} telah dibatalkan.",
+                'order'
+            );
+
             $conn->commit();
             sendSuccess('Pesanan berhasil dibatalkan', ['status' => 'cancelled']);
         }
@@ -246,6 +307,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST'
 
         $conn->prepare("UPDATE orders SET status = 'completed' WHERE order_id = :oid")
              ->execute([':oid' => $order_id]);
+
+        createNotification(
+            $conn,
+            $user_id,
+            'Pesanan selesai',
+            "Pesanan #{$order['order_number']} telah selesai.",
+            'order'
+        );
+
         $conn->commit();
         sendSuccess('Pesanan selesai', ['status' => 'completed']);
 
@@ -320,9 +390,10 @@ else if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['order_id']) && !is
     $order_id = intval($_GET['order_id']);
 
     try {
-        $query = "SELECT o.*, ua.label, ua.recipient_name, ua.phone, ua.address, ua.district, ua.city, ua.province, ua.postal_code 
+        $query = "SELECT o.*, ua.label, ua.recipient_name, ua.phone, ua.address, ua.district, ua.city, ua.province, ua.postal_code, sc.carrier_name 
                   FROM orders o 
                   LEFT JOIN user_addresses ua ON o.address_id = ua.address_id 
+                  LEFT JOIN shipping_carriers sc ON o.shipping_carrier_id = sc.carrier_id 
                   WHERE o.order_id = :order_id AND o.user_id = :uid";
 
         $stmt = $conn->prepare($query);
@@ -489,13 +560,13 @@ else if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_GET['action']) && $_GE
         $shippingCost = (float) $rate['price'];
     }
 
-    // Hitung subtotal dari server (harga dari tabel books, jangan percaya aplikasi)
-    $subtotal = 0;
-    $bookDetails = []; // untuk item_details Midtrans
+    // Hitung subtotal dari server (harga asli dari tabel books, jangan percaya aplikasi)
+    $subtotalOldPrice = 0;
+    $bookDetails = []; // untuk item_details Midtrans (harga jual setelah diskon)
 
     $itemDiscountTotal = 0;
     foreach ($data['items'] as $item) {
-        $bookStmt = $conn->prepare('SELECT book_id, title, price, old_price, stock FROM books WHERE book_id = :bid');
+        $bookStmt = $conn->prepare('SELECT book_id, title, price, old_price, is_discount, stock FROM books WHERE book_id = :bid');
         $bookStmt->bindParam(':bid', $item['book_id']);
         $bookStmt->execute();
         $book = $bookStmt->fetch(PDO::FETCH_ASSOC);
@@ -508,16 +579,25 @@ else if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_GET['action']) && $_GE
             sendError('Stok tidak cukup untuk: ' . $book['title'] . '. Tersedia: ' . $book['stock'], 400);
         }
 
-        $originalPrice = $book['old_price'] !== null ? (float) $book['old_price'] : (float) $book['price'];
-        $sellingPrice = (float) $book['price'];
-        $itemDiscount = ($originalPrice - $sellingPrice) * (int) $item['quantity'];
-        $itemDiscountTotal += $itemDiscount;
+        $oldPrice = $book['old_price'] !== null ? (float) $book['old_price'] : 0;
+        $discountPercent = (float) $book['price'];
 
-        $subtotal += $originalPrice * (int) $item['quantity'];
+        if ($book['is_discount'] && $oldPrice > 0 && $discountPercent > 0) {
+            $sellingPrice = (int) round($oldPrice - ($oldPrice * $discountPercent / 100));
+            $itemDiscount = (int) round(($oldPrice - $sellingPrice) * (int) $item['quantity']);
+            $subtotalOldPrice += $oldPrice * (int) $item['quantity'];
+        } else {
+            $sellingPrice = (int) $oldPrice;
+            $itemDiscount = 0;
+            $subtotalOldPrice += $sellingPrice * (int) $item['quantity'];
+        }
+        $itemDiscountTotal += $itemDiscount;
 
         $bookDetails[] = [
             'id' => $book['book_id'],
-            'price' => (int) $originalPrice,
+            'price' => (int) $oldPrice, // harga asli untuk order_items.price
+            'sellingPrice' => (int) $sellingPrice, // harga jual untuk Midtrans
+            'discount' => (int) $itemDiscount,
             'quantity' => (int) $item['quantity'],
             'name' => substr($book['title'], 0, 50),
         ];
@@ -526,7 +606,7 @@ else if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_GET['action']) && $_GE
     // Promo code
     $promoCode = isset($data['promo_code']) ? trim($data['promo_code']) : null;
     $promoId = null;
-    $discountAmount = 0;
+    $promoDiscount = 0;
 
     if ($promoCode) {
         $promoStmt = $conn->prepare('SELECT * FROM promo_codes WHERE code = :code AND is_active = 1 AND valid_from <= CURDATE() AND valid_until >= CURDATE()');
@@ -545,17 +625,17 @@ else if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_GET['action']) && $_GE
         $promoId = (int) $promo['promo_id'];
 
         if ($promo['type'] == 'percentage') {
-            $discountAmount = (float) $subtotal * ((float) $promo['value'] / 100);
+            $promoDiscount = (float) $subtotalOldPrice * ((float) $promo['value'] / 100);
         } elseif ($promo['type'] == 'free_shipping') {
-            $discountAmount = $shippingCost;
+            $promoDiscount = (float) $shippingCost * ((float) $promo['value'] / 100);
             $shippingCost = 0;
         }
     }
 
-    $discountAmount += $itemDiscountTotal;
+    $discountAmount = (float) $itemDiscountTotal + $promoDiscount;
 
     $tax = 0;
-    $totalAmount = (float) $subtotal - $discountAmount + $shippingCost + $tax;
+    $totalAmount = (float) $subtotalOldPrice - $discountAmount + $shippingCost + $tax;
     if ($totalAmount < 0) {
         $totalAmount = 0;
     }
@@ -599,8 +679,8 @@ else if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_GET['action']) && $_GE
         $orderId = (int) $conn->lastInsertId();
 
         // Insert order items
-        $query = "INSERT INTO order_items (order_id, book_id, quantity, price) 
-                  VALUES (:order_id, :book_id, :quantity, :price)";
+        $query = "INSERT INTO order_items (order_id, book_id, quantity, price, discount) 
+                  VALUES (:order_id, :book_id, :quantity, :price, :discount)";
         $stmt = $conn->prepare($query);
 
         $itemIndex = 0;
@@ -609,6 +689,7 @@ else if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_GET['action']) && $_GE
             $stmt->bindParam(':book_id', $item['book_id']);
             $stmt->bindParam(':quantity', $item['quantity']);
             $stmt->bindParam(':price', $bookDetails[$itemIndex]['price']);
+            $stmt->bindParam(':discount', $bookDetails[$itemIndex]['discount']);
             $stmt->execute();
             $itemIndex++;
         }
@@ -616,7 +697,15 @@ else if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_GET['action']) && $_GE
         // Minta Snap token ke Midtrans
         $urls = midtransBaseUrls();
 
-        $itemDetails = $bookDetails;
+        $itemDetails = [];
+        foreach ($bookDetails as $bd) {
+            $itemDetails[] = [
+                'id' => $bd['id'],
+                'price' => (int) $bd['sellingPrice'],
+                'quantity' => (int) $bd['quantity'],
+                'name' => substr($bd['name'], 0, 50),
+            ];
+        }
         // Tambahkan entri Ongkos Kirim
         if ($shippingCost > 0) {
             $itemDetails[] = [
@@ -626,13 +715,14 @@ else if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_GET['action']) && $_GE
                 'name' => 'Ongkos Kirim',
             ];
         }
-        // Tambahkan entri Diskon Promo (harga negatif)
-        if ($discountAmount > 0) {
+        // Tambahkan entri Diskon Promo (harga negatif, hanya diskon voucher)
+        // Diskon item sudah tercakup dalam sellingPrice di item_details
+        if ($promoDiscount > 0) {
             $itemDetails[] = [
                 'id' => 'discount',
-                'price' => -(int) round($discountAmount),
+                'price' => -(int) round($promoDiscount),
                 'quantity' => 1,
-                'name' => 'Diskon Promo',
+                'name' => 'Diskon Voucher',
             ];
         }
 
@@ -681,6 +771,15 @@ else if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_GET['action']) && $_GE
         $stmt->execute();
 
         $conn->commit();
+
+        // Notifikasi pesanan baru
+        createNotification(
+            $conn,
+            $user_id,
+            'Pesanan baru telah dibuat',
+            "Pesanan #{$orderNumber} berhasil dibuat dan menunggu pembayaran.",
+            'order'
+        );
 
         sendSuccess('Order berhasil dibuat', [
             'order_id' => $orderId,
@@ -746,6 +845,75 @@ else if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_GET['action']) && $_GE
         echo json_encode(['status' => 'error', 'message' => 'Internal error']);
     }
     exit;
+}
+
+// ========================================
+// GET ORDER NOTIFICATIONS (API - pakai token)
+// Diturunkan dari tabel orders, tanpa tabel baru.
+// ========================================
+else if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['action']) && $_GET['action'] === 'notifications') {
+
+    $user_id = getAuthUserId();
+    if (!$user_id) {
+        sendError('Please login first', 401);
+    }
+
+    // Kadaluarkan pesanan pending yang lewat waktu
+    expireStaleOrders($conn, $user_id);
+
+    try {
+        $query = "
+            SELECT
+                o.order_id,
+                o.order_number,
+                o.status,
+                o.updated_at,
+                sc.carrier_name,
+                (
+                    SELECT b.image
+                    FROM order_items oi
+                    JOIN books b ON oi.book_id = b.book_id
+                    WHERE oi.order_id = o.order_id
+                    ORDER BY oi.order_item_id ASC
+                    LIMIT 1
+                ) AS cover_image,
+                (
+                    SELECT COUNT(*)
+                    FROM order_items oi
+                    WHERE oi.order_id = o.order_id
+                ) AS item_count
+            FROM orders o
+            LEFT JOIN shipping_carriers sc ON o.shipping_carrier_id = sc.carrier_id
+            WHERE o.user_id = :uid
+            ORDER BY o.updated_at DESC
+            LIMIT 30
+        ";
+
+        $stmt = $conn->prepare($query);
+        $stmt->bindValue(':uid', $user_id, PDO::PARAM_INT);
+        $stmt->execute();
+
+        $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        $items = [];
+        foreach ($rows as $row) {
+            $items[] = [
+                'order_id' => (int) $row['order_id'],
+                'order_number' => $row['order_number'],
+                'status' => $row['status'],
+                'status_label' => orderStatusLabel($row['status']),
+                'carrier_name' => $row['carrier_name'] ?? null,
+                'cover_image' => $row['cover_image'] ?? null,
+                'item_count' => (int) $row['item_count'],
+                'updated_at' => $row['updated_at'],
+            ];
+        }
+
+        sendSuccess('Notifications retrieved', ['items' => $items]);
+
+    } catch (Exception $e) {
+        sendError('Gagal memuat notifikasi pesanan: ' . $e->getMessage(), 500);
+    }
+
 }
 
 // Method not allowed

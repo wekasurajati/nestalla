@@ -54,10 +54,10 @@ class _RegisterPageState extends State<RegisterPage> {
       await context.read<NotificationProvider>().add(
         AppNotification(
           id: DateTime.now().microsecondsSinceEpoch.toString(),
-          title: 'Akun berhasil dibuat',
+          title: 'Selamat datang, $fullName!',
           message:
-              'Selamat datang di Nestalla, $fullName. '
-              'Akunmu sudah aktif dan siap digunakan.',
+              'Akun Nestalla kamu sudah aktif dan siap digunakan. '
+              'Jelajahi buku favoritmu dan pesan langsung dari aplikasi.',
           createdAt: DateTime.now(),
           type: AppNotificationType.account,
         ),

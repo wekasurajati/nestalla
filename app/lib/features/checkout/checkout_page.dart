@@ -145,7 +145,7 @@ class _CheckoutPageState extends State<CheckoutPage>
     int subtotal = 0;
     for (final id in cart.selectedIds.where(byId.containsKey)) {
       final book = byId[id]!;
-      subtotal += book.price * cart.quantityOf(id);
+      subtotal += book.sellingPrice * cart.quantityOf(id);
     }
 
     final shippingCost = _selectedShipping?.price ?? 0;
@@ -335,8 +335,7 @@ class _CheckoutPageState extends State<CheckoutPage>
   }
 
   int _platformDiscount(Book book, int quantity) {
-    if (book.oldPrice == null || book.oldPrice! <= book.price) return 0;
-    return (book.oldPrice! - book.price) * quantity;
+    return book.discountAmount * quantity;
   }
 
   int _getShippingCost() {
@@ -512,24 +511,18 @@ class _CheckoutPageState extends State<CheckoutPage>
                 }
 
                 int subtotal = 0;
-                int totalPlatformDiscount = 0;
                 int grandTotal = 0;
 
                 for (final id in selectedIds) {
                   final book = byId[id]!;
                   final qty = cart.quantityOf(id);
-                  subtotal += book.price * qty;
-                  totalPlatformDiscount += _platformDiscount(book, qty);
-                  grandTotal += book.price * qty;
+                  subtotal += book.sellingPrice * qty;
+                  grandTotal += book.sellingPrice * qty;
                 }
 
                 final shippingCost = _getShippingCost();
                 final voucherDiscount = _getVoucherDiscount();
-                final finalTotal =
-                    grandTotal -
-                    totalPlatformDiscount -
-                    voucherDiscount +
-                    shippingCost;
+                final finalTotal = grandTotal - voucherDiscount + shippingCost;
 
                 return SectionCard(
                   title: 'Detail Pesanan',
@@ -550,14 +543,6 @@ class _CheckoutPageState extends State<CheckoutPage>
                       const Divider(height: 1, color: AppColors.backCircle),
                       const SizedBox(height: 8),
                       _AmountRow(label: 'Subtotal', value: subtotal),
-                      if (totalPlatformDiscount > 0) ...[
-                        const SizedBox(height: 4),
-                        _AmountRow(
-                          label: 'Diskon Platform',
-                          value: -totalPlatformDiscount,
-                          color: Colors.green,
-                        ),
-                      ],
                       if (voucherDiscount > 0) ...[
                         const SizedBox(height: 4),
                         _AmountRow(
@@ -764,17 +749,15 @@ class _ItemDetail extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final lineTotal = book.price * quantity;
-    final originalTotal = (book.oldPrice ?? book.price) * quantity;
+    final lineTotal = book.sellingPrice * quantity;
+    final originalTotal = (book.oldPrice ?? book.sellingPrice) * quantity;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         BookListTile(
           book: book,
-          discountPercent: book.oldPrice != null && book.oldPrice! > book.price
-              ? ((book.oldPrice! - book.price) / book.oldPrice! * 100).round()
-              : null,
+          discountPercent: book.discountPercent > 0 ? book.discountPercent : null,
         ),
         const SizedBox(height: 8),
         Row(
@@ -812,7 +795,7 @@ class _ItemDetail extends StatelessWidget {
             ),
           ],
         ),
-        if (book.oldPrice != null && book.oldPrice! > book.price) ...[
+        if (book.isDiscount && book.oldPrice != null) ...[
           const SizedBox(height: 4),
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,

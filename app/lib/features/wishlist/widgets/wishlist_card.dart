@@ -36,7 +36,7 @@ class WishlistCard extends StatelessWidget {
                   fit: BoxFit.contain,
                   showShadow: false,
                 ),
-                if (book.oldPrice != null && book.oldPrice! > book.price)
+                if (book.isDiscount && book.oldPrice != null)
                   Positioned(
                     top: 8,
                     left: 8,
@@ -90,14 +90,14 @@ class WishlistCard extends StatelessWidget {
                       crossAxisAlignment: WrapCrossAlignment.center,
                       children: [
                         Text(
-                          formatRupiah(book.price),
+                          formatRupiah(book.sellingPrice),
                           style: const TextStyle(
                             fontSize: 13,
                             fontWeight: FontWeight.bold,
                             color: AppColors.navy,
                           ),
                         ),
-                        if (book.oldPrice != null && book.oldPrice! > book.price)
+                        if (book.isDiscount && book.oldPrice != null)
                           Text(
                             formatRupiah(book.oldPrice!),
                             style: TextStyle(
@@ -126,11 +126,10 @@ class _DiscountBadge extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final oldPrice = book.oldPrice;
-    if (oldPrice == null || oldPrice <= book.price) {
+    final percent = book.discountPercent;
+    if (percent == 0 || book.oldPrice == null) {
       return const SizedBox.shrink();
     }
-    final percent = ((oldPrice - book.price) / oldPrice * 100).round();
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
